@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'section0_screen.dart';
 import 'constants/colors.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   KakaoSdk.init(nativeAppKey: '964ca6284360a7db3f8400c26a5d4be9'); // kakao 접두사 없이 “키만”
   runApp(const MyApp());
 }

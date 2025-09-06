@@ -9,6 +9,9 @@
     <array>
         <string>kakaokompassauth</string>
         <string>kakaolink</string>
+
+        <string>naversearchapp</string>
+        <string>naversearchthirdlogin</string>
     </array>
 
     <key>CFBundleURLTypes</key>
@@ -16,6 +19,7 @@
         <dict>
             <key>CFBundleURLSchemes</key>
             <array>
+                <string>myapp</string>
                 <string>kakao964ca6284360a7db3f8400c26a5d4be9</string>
             </array>
         </dict>
@@ -61,5 +65,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+    <true/>
 </dict>
 </plist>

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '/constants/colors.dart';
-import 'home_screen.dart';
 import 'main_screen.dart';
 import 'auth/kakao_auth.dart';
-import 'main_screen.dart';
+import 'auth/naver_auth.dart';
 
 class Section1Screen extends StatelessWidget {
   const Section1Screen({super.key});
@@ -18,6 +17,7 @@ class Section1Screen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 80),
+
               // 로고 + 텍스트
               Image.asset(
                 'assets/image/login_screen.png',
@@ -35,25 +35,26 @@ class Section1Screen extends StatelessWidget {
               ),
               const Spacer(),
 
+              // ─────────── 로그인 버튼 헤더 ───────────
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 3),
                 child: Row(
-                  children: [
-                    const Expanded(
+                  children: const [
+                    Expanded(
                       child: Divider(
                         color: Colors.grey,
                         thickness: 0.8,
                         endIndent: 12,
                       ),
                     ),
-                    const Text(
+                    Text(
                       '로그인 / 회원가입',
                       style: TextStyle(
                         color: Colors.black54,
                         fontSize: 13,
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Divider(
                         color: Colors.grey,
                         thickness: 0.8,
@@ -65,6 +66,7 @@ class Section1Screen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
 
+              // ─────────── 카카오 로그인 ───────────
               _loginButton(
                 text: '카카오로 계속하기',
                 iconPath: 'assets/icon/kakao.png',
@@ -72,17 +74,20 @@ class Section1Screen extends StatelessWidget {
                 textColor: Colors.black,
                 onTap: () async {
                   try {
-                    final user = await KakaoAuth.signIn();   // ← 기존 함수 그대로 사용
+                    final user = await KakaoAuth.signIn();   // ✅ 여기서 user를 가져옴
                     if (!context.mounted) return;
 
                     if (user != null) {
-                      // ✅ 성공: 로그인 화면 스택 제거하고 메인으로
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const MainScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => MainScreen(
+                            name: user.kakaoAccount?.profile?.nickname ?? '이름 없음',
+                            email: user.kakaoAccount?.email ?? '이메일 정보 없음',
+                          ),
+                        ),
                             (_) => false,
                       );
                     } else {
-                      // 사용자가 취소한 케이스
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('로그인이 취소되었습니다.')),
                       );
@@ -96,42 +101,76 @@ class Section1Screen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 18),
+
+              // ─────────── 네이버 로그인 ───────────
               _loginButton(
                 text: '네이버로 계속하기',
                 iconPath: 'assets/icon/naver.png',
                 backgroundColor: const Color(0xFF1EC800),
                 textColor: Colors.white,
-                onTap: () {},
+                onTap: () async {
+                  final user = await NaverAuth.signIn();
+                  if (!context.mounted) return;
+
+                  if (user != null) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => MainScreen(
+                          name: user["name"] ?? "이름 없음",
+                          email: user["email"] ?? "이메일 정보 없음",
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("네이버 로그인 실패")),
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 18),
+
+              // ─────────── 구글 로그인 ───────────
               _loginButton(
                 text: 'Google로 계속하기',
                 iconPath: 'assets/icon/google.png',
                 backgroundColor: Colors.white,
                 textColor: Colors.black87,
                 border: BorderSide(color: Colors.grey.shade400),
-                onTap: () {},
+                onTap: () async {
+                  // TODO: 구글 로그인 붙이기
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const MainScreen(
+                        name: '구글 사용자',
+                        email: 'google@example.com',
+                      ),
+                    ),
+                        (_) => false,
+                  );
+                },
               ),
 
+              // ─────────── 구분선 ───────────
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 3),
                 child: Row(
-                  children: [
-                    const Expanded(
+                  children: const [
+                    Expanded(
                       child: Divider(
                         color: Colors.grey,
                         thickness: 0.8,
                         endIndent: 12,
                       ),
                     ),
-                    const Text(
+                    Text(
                       '또는',
                       style: TextStyle(
                         color: Colors.black54,
                         fontSize: 13,
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Divider(
                         color: Colors.grey,
                         thickness: 0.8,
@@ -142,12 +181,18 @@ class Section1Screen extends StatelessWidget {
                 ),
               ),
 
+              // ─────────── 로그인 없이 계속하기 ───────────
               _primaryCTA(
                 text: '로그인 없이 계속하기',
                 onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MainScreen()),
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => MainScreen(
+                        name: '로그인 하세요',
+                        email: '이메일 정보 없음',
+                      ),
+                    ),
+                    (_) => false,
                   );
                 },
               ),
@@ -160,6 +205,7 @@ class Section1Screen extends StatelessWidget {
     );
   }
 
+  // ─────────── 버튼 위젯 ───────────
   Widget _loginButton({
     required String text,
     required String iconPath,
@@ -183,26 +229,22 @@ class Section1Screen extends StatelessWidget {
           ),
         ),
         child: Stack(
-          alignment: Alignment.center, // 텍스트는 정확히 중앙
+          alignment: Alignment.center,
           children: [
-            // 왼쪽 로고(고정 간격)
             Align(
               alignment: Alignment.centerLeft,
               child: Image.asset(iconPath, width: 20, height: 20),
             ),
-            // 중앙 텍스트
             Text(
               text,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 16
-              ),
+              style: TextStyle(color: textColor, fontSize: 16),
             ),
           ],
         ),
       ),
     );
   }
+
   Widget _primaryCTA({
     required String text,
     VoidCallback? onTap,
@@ -213,19 +255,14 @@ class Section1Screen extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary, // 0xFF673E38
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16
-          ),
-        ),
+        child: Text(text, style: const TextStyle(fontSize: 16)),
       ),
     );
   }

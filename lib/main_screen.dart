@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'score_screen.dart';
 import 'bookmark_screen.dart';
-import 'more_screen.dart';
+import 'setting_screen.dart';
 import 'constants/colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  final String? name;
+  final String? email;
+
+  const MainScreen({
+    Key? key,
+    this.name,
+    this.email,
+  }) : super(key: key);
+
   static _MainScreenState? of(BuildContext ctx) =>
       ctx.findAncestorStateOfType<_MainScreenState>();
 
@@ -37,7 +44,11 @@ class _MainScreenState extends State<MainScreen> {
         grouped: true,
       ),
       const BookmarkScreen(),
-      const MoreScreen(),
+      // ✅ 로그인 정보 전달
+      SettingScreen(
+        name: widget.name ?? '로그인 하세요',
+        email: widget.email ?? '이메일 정보 없음',
+      ),
     ];
   }
 
@@ -89,7 +100,9 @@ class _MainScreenState extends State<MainScreen> {
                 'assets/icon/home.svg',
                 width: 20,
                 height: 20,
-                color: _selectedIndex == 0 ? const Color(0xFF673E38) : Colors.grey,
+                color: _selectedIndex == 0
+                    ? const Color(0xFF673E38)
+                    : Colors.grey,
               ),
               label: '홈',
             ),
@@ -98,7 +111,9 @@ class _MainScreenState extends State<MainScreen> {
                 'assets/icon/score.svg',
                 width: 20,
                 height: 20,
-                color: _selectedIndex == 1 ? const Color(0xFF673E38) : Colors.grey,
+                color: _selectedIndex == 1
+                    ? const Color(0xFF673E38)
+                    : Colors.grey,
               ),
               label: '악보',
             ),
@@ -107,18 +122,22 @@ class _MainScreenState extends State<MainScreen> {
                 'assets/icon/bookmark.svg',
                 width: 20,
                 height: 20,
-                color: _selectedIndex == 2 ? const Color(0xFF673E38) : Colors.grey,
+                color: _selectedIndex == 2
+                    ? const Color(0xFF673E38)
+                    : Colors.grey,
               ),
               label: '즐겨찾기',
             ),
             BottomNavigationBarItem(
               icon: SvgPicture.asset(
-                'assets/icon/more.svg',
+                'assets/icon/setting.svg',
                 width: 20,
                 height: 20,
-                color: _selectedIndex == 3 ? const Color(0xFF673E38) : Colors.grey,
+                color: _selectedIndex == 3
+                    ? const Color(0xFF673E38)
+                    : Colors.grey,
               ),
-              label: '더보기',
+              label: '설정',
             ),
           ],
         ),

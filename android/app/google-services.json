@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "800123758723",
+    "project_id": "worship-hymn",
+    "storage_bucket": "worship-hymn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:800123758723:android:7581de26943fc18f2393b6",
+        "android_client_info": {
+          "package_name": "com.worship.hymn.worshiphymn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaSHpVAEUoIvnfN4qG7IvjljiqoS-bJDI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

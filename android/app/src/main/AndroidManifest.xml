@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.worship_hymn">
     <!-- 인터넷 권한 (카카오 SDK 통신) -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
@@ -27,6 +28,7 @@
                 <!-- ↓↓↓ 여기에 kakao + 네이티브앱키 -->
                 <data android:scheme="kakao964ca6284360a7db3f8400c26a5d4be9"
                       android:host="oauth"/>
+                <data android:scheme="myapp" android:host="login" android:path="/callback"/>
             </intent-filter>
         </activity>
 

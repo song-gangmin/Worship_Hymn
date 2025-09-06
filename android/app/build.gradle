@@ -3,6 +3,7 @@ plugins {
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
+    id 'com.google.gms.google-services'
 }
 
 android {
@@ -50,3 +51,4 @@ dependencies {
     // Kakao SDK 추가
     implementation "com.kakao.sdk:v2-user:2.20.6"
 }
+apply plugin: 'com.google.gms.google-services'
