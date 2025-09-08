@@ -4,26 +4,45 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+
+	<!-- 카카오/네이버 앱 호출 허용 -->
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>kakaokompassauth</string>
 		<string>kakaolink</string>
+		<string>naver</string>
 		<string>naversearchapp</string>
 		<string>naversearchthirdlogin</string>
 	</array>
+
+	<!-- URL Types: Google + Naver -->
 	<key>CFBundleURLTypes</key>
 	<array>
-      <dict>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>CFBundleURLName</key>
-        <string>google</string>
-        <key>CFBundleURLSchemes</key>
-        <array>
-          <string>com.googleusercontent.apps.800123758723-d7op1npsoa8665g13b2brlar5kst0o5b</string>
-        </array>
-      </dict>
-    </array>
+		<!-- Google -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>google</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4</string>
+			</array>
+		</dict>
+
+		<!-- Naver -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Client ID 기반 URL Scheme -->
+				<string>naveruCalTrNx7kUnkKbdsV7L</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- 앱 이름 -->
 	<key>CFBundleDisplayName</key>
 	<string>예배찬송가</string>
 	<key>CFBundleExecutable</key>
@@ -67,5 +86,11 @@
 	<true/>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
-</dict>
+
+	<!-- 🔑 네이버 로그인 전용 설정 -->
+    <key>NaverServiceAppName</key><string>예배 찬송가</string>
+    <key>NaverServiceAppUrlScheme</key><string>naveruCalTrNx7kUnkKbdsV7L</string>
+    <key>NaverConsumerKey</key><string>uCalTrNx7kUnkKbdsV7L</string>
+    <key>NaverConsumerSecret</key><string>AdDC6nLXyg</string>
+  </dict>
 </plist>

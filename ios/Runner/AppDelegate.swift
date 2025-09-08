@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import Firebase   // ✅ 반드시 필요
 import GoogleSignIn   // ✅ 추가
+import NaverThirdPartyLogin
 
 
 @main
@@ -14,12 +15,15 @@ import GoogleSignIn   // ✅ 추가
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
-      override func application(
-        _ app: UIApplication,
-        open url: URL,
-        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-      ) -> Bool {
-        if GIDSignIn.sharedInstance.handle(url) { return true }
-        return super.application(app, open: url, options: options)
-      }
+  override func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    if GIDSignIn.sharedInstance.handle(url) { return true }
+    if NaverThirdPartyLoginConnection
+        .getSharedInstance()?
+        .application(app, open: url, options: options) == true { return true }
+    return super.application(app, open: url, options: options)
+  }
 }

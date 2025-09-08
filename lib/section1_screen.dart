@@ -4,6 +4,7 @@ import 'main_screen.dart';
 import 'auth/kakao_auth.dart';
 import 'auth/naver_auth.dart';
 import 'auth/google_auth.dart';
+import 'auth/resualt_auth.dart';
 
 class Section1Screen extends StatelessWidget {
   const Section1Screen({super.key});
@@ -73,85 +74,28 @@ class Section1Screen extends StatelessWidget {
                 iconPath: 'assets/icon/kakao.png',
                 backgroundColor: const Color(0xFFFFE812),
                 textColor: Colors.black,
-                onTap: () async {
-                  try {
-                    final user = await KakaoAuth.signIn();   // ✅ 여기서 user를 가져옴
-                    if (!context.mounted) return;
-
-                    if (user != null) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (_) => MainScreen(
-                            name: user.kakaoAccount?.profile?.nickname ?? '이름 없음',
-                            email: user.kakaoAccount?.email ?? '이메일 정보 없음',
-                          ),
-                        ),
-                            (_) => false,
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('로그인이 취소되었습니다.')),
-                      );
-                    }
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('카카오 로그인 실패: $e')),
-                    );
-                  }
-                },
+                onTap: () => handleSignIn(context: context, service: KakaoAuth()),
               ),
+
               const SizedBox(height: 18),
 
-              // ─────────── 네이버 로그인 ───────────
               _loginButton(
                 text: '네이버로 계속하기',
                 iconPath: 'assets/icon/naver.png',
                 backgroundColor: const Color(0xFF1EC800),
                 textColor: Colors.white,
-                onTap: () async {
-                  final user = await NaverAuth.signIn();
-                  if (!context.mounted) return;
-
-                  if (user != null) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (_) => MainScreen(
-                          name: user["name"] ?? "이름 없음",
-                          email: user["email"] ?? "이메일 정보 없음",
-                        ),
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("네이버 로그인 실패")),
-                    );
-                  }
-                },
+                onTap: () => handleSignIn(context: context, service: NaverAuth()),
               ),
+
               const SizedBox(height: 18),
 
-              // ─────────── 구글 로그인 ───────────
               _loginButton(
                 text: 'Google로 계속하기',
                 iconPath: 'assets/icon/google.png',
                 backgroundColor: Colors.white,
                 textColor: Colors.black87,
                 border: BorderSide(color: Colors.grey.shade400),
-                onTap: () async {
-                  final account = await GoogleAuth.signIn(context);
-                  if (account == null) return; // 로그인 취소 또는 실패
-
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => MainScreen(
-                        name: account.displayName ?? '구글 사용자',
-                        email: account.email,
-                      ),
-                    ),
-                        (_) => false,
-                  );
-                },
+                onTap: () => handleSignIn(context: context, service: GoogleAuth()),
               ),
 
               // ─────────── 구분선 ───────────
@@ -267,6 +211,39 @@ class Section1Screen extends StatelessWidget {
         ),
         child: Text(text, style: const TextStyle(fontSize: 16)),
       ),
+    );
+  }
+}
+Future<void> handleSignIn({
+  required BuildContext context,
+  required AuthService service, // GoogleAuth(), KakaoAuth(), NaverAuth()
+}) async {
+  try {
+    final user = await service.signIn();
+    if (!context.mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => MainScreen(
+          name: user.name ?? '사용자',
+          email: user.email ?? '이메일 정보 없음',
+        ),
+      ),
+          (_) => false,
+    );
+  } on AuthException catch (e) {
+    if (!context.mounted) return;
+    final msg = switch (e.code) {
+      'canceled' => '로그인이 취소되었습니다.',
+      'network'  => '네트워크 상태를 확인해 주세요.',
+      'config'   => '로그인 설정이 올바르지 않습니다.',
+      _          => e.message,
+    };
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('로그인 실패: $e')),
     );
   }
 }
