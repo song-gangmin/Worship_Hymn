@@ -3,6 +3,7 @@ import '/constants/colors.dart';
 import 'main_screen.dart';
 import 'auth/kakao_auth.dart';
 import 'auth/naver_auth.dart';
+import 'auth/google_auth.dart';
 
 class Section1Screen extends StatelessWidget {
   const Section1Screen({super.key});
@@ -138,12 +139,14 @@ class Section1Screen extends StatelessWidget {
                 textColor: Colors.black87,
                 border: BorderSide(color: Colors.grey.shade400),
                 onTap: () async {
-                  // TODO: 구글 로그인 붙이기
+                  final account = await GoogleAuth.signIn(context);
+                  if (account == null) return; // 로그인 취소 또는 실패
+
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
-                      builder: (_) => const MainScreen(
-                        name: '구글 사용자',
-                        email: 'google@example.com',
+                      builder: (_) => MainScreen(
+                        name: account.displayName ?? '구글 사용자',
+                        email: account.email,
                       ),
                     ),
                         (_) => false,

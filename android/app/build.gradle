@@ -45,9 +45,6 @@ flutter {
 }
 
 dependencies {
-    // 기본 의존성
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-
     // Kakao SDK 추가
     implementation "com.kakao.sdk:v2-user:2.20.6"
 }

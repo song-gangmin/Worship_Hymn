@@ -2,27 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>$(DEVELOPMENT_LANGUAGE)</string>
-
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-        <string>kakaokompassauth</string>
-        <string>kakaolink</string>
-
-        <string>naversearchapp</string>
-        <string>naversearchthirdlogin</string>
-    </array>
-
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>myapp</string>
-                <string>kakao964ca6284360a7db3f8400c26a5d4be9</string>
-            </array>
-        </dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kakaokompassauth</string>
+		<string>kakaolink</string>
+		<string>naversearchapp</string>
+		<string>naversearchthirdlogin</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+      <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLName</key>
+        <string>google</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.800123758723-d7op1npsoa8665g13b2brlar5kst0o5b</string>
+        </array>
+      </dict>
     </array>
 	<key>CFBundleDisplayName</key>
 	<string>예배찬송가</string>
@@ -66,6 +66,6 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>FirebaseAppDelegateProxyEnabled</key>
-    <true/>
+	<true/>
 </dict>
 </plist>
