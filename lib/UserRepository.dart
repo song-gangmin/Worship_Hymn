@@ -1,27 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'auth/resualt_auth.dart'; // AuthUser, AuthProvider
+import 'auth/resualt_auth.dart';
 
 class UserRepository {
-  final _db = FirebaseFirestore.instance;
+  final _col = FirebaseFirestore.instance.collection('users');
 
-  Future<void> upsertUser(AuthUser u) async {
-    final doc = _db.collection('users').doc(u.uid);
-
-    // 새 문서면 createdAt 넣고, 매 로그인마다 lastLoginAt/updatedAt 갱신
+  /// 소셜 로그인 결과(AuthUser) 기반으로 upsert
+  Future<void> upsertUser(AuthUser user) async {
+    final doc = _col.doc(user.uid);
     await doc.set({
-      'uid': u.uid,
-      'provider': u.provider.name,   // e.g. 'google' | 'naver' | 'kakao' | 'guest'
-      'name': u.name,
-      'email': u.email,
-      'photoUrl': u.photoUrl,
+      'uid': user.uid,
+      'provider': user.provider.name,
+      'name': user.name,
+      'email': user.email,
+      'photoUrl': user.photoUrl,
       'updatedAt': FieldValue.serverTimestamp(),
-      'lastLoginAt': FieldValue.serverTimestamp(),
-      'createdAt': FieldValue.serverTimestamp(), // merge:true라 최초에만 실제로 기록됨
+      'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-  }
-
-  Future<Map<String, dynamic>?> getUser(String uid) async {
-    final snap = await _db.collection('users').doc(uid).get();
-    return snap.data();
   }
 }

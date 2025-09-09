@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '/constants/colors.dart';
+import '../UserRepository.dart';
 import 'main_screen.dart';
 import 'auth/kakao_auth.dart';
 import 'auth/naver_auth.dart';
@@ -222,16 +223,27 @@ Future<void> handleSignIn({
   try {
     final user = await service.signIn();
 
-    // ✅ Firestore 저장
-    await UserRepository().upsertUser(user);
-
-    // ✅ 로그인 성공 후 라우팅
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${user.name ?? '사용자'}님 환영합니다!')),
+    // 화면 먼저 전환
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => MainScreen(
+          name: user.name ?? '이름 없음',
+          email: user.email ?? '이메일 없음',
+        ),
+      ),
+          (_) => false,
     );
 
-    Navigator.pushReplacementNamed(context, '/home');
-  } catch (e) {
+    // Firestore 저장 (실패해도 화면 유지)
+    try {
+      await UserRepository().upsertUser(user); // ✅ AuthUser 기반
+    } catch (e, st) {
+      debugPrint('[LOGIN] Firestore upsert FAIL: $e\n$st');
+    }
+  } catch (e, st) {
+    debugPrint('[LOGIN] ERROR: $e\n$st');
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('로그인 실패: $e')),
     );
