@@ -2,7 +2,7 @@ import Flutter
 import UIKit
 import Firebase   // ✅ 반드시 필요
 import GoogleSignIn   // ✅ 추가
-import NaverThirdPartyLogin
+import NidThirdPartyLogin
 
 
 @main
@@ -21,9 +21,7 @@ import NaverThirdPartyLogin
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
     if GIDSignIn.sharedInstance.handle(url) { return true }
-    if NaverThirdPartyLoginConnection
-        .getSharedInstance()?
-        .application(app, open: url, options: options) == true { return true }
+    if (NidOAuth.shared.handleURL(url) == true) { return true }
     return super.application(app, open: url, options: options)
   }
 }

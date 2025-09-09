@@ -2,12 +2,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'resualt_auth.dart';
 
 class GoogleAuth implements AuthService {
-  final _signIn = GoogleSignIn(/* serverClientId: ... 필요시 */);
+  final GoogleSignIn _signIn = GoogleSignIn.instance;
 
   @override
   Future<AuthUser> signIn() async {
     try {
-      final account = await _signIn.signIn();
+      final account = await _signIn.authenticate();
       if (account == null) throw AuthException('canceled', '사용자가 취소');
 
       final auth = await account.authentication;
@@ -18,7 +18,7 @@ class GoogleAuth implements AuthService {
         email: account.email,
         photoUrl: account.photoUrl,
         idToken: auth.idToken,
-        accessToken: auth.accessToken,
+        accessToken: auth.idToken,
       );
     } catch (e) {
       if (e is AuthException) rethrow;

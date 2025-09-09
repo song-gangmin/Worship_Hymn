@@ -98,6 +98,7 @@ class Section1Screen extends StatelessWidget {
                 onTap: () => handleSignIn(context: context, service: GoogleAuth()),
               ),
 
+
               // ─────────── 구분선 ───────────
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 3),
@@ -216,32 +217,21 @@ class Section1Screen extends StatelessWidget {
 }
 Future<void> handleSignIn({
   required BuildContext context,
-  required AuthService service, // GoogleAuth(), KakaoAuth(), NaverAuth()
+  required AuthService service,
 }) async {
   try {
     final user = await service.signIn();
-    if (!context.mounted) return;
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => MainScreen(
-          name: user.name ?? '사용자',
-          email: user.email ?? '이메일 정보 없음',
-        ),
-      ),
-          (_) => false,
+    // ✅ Firestore 저장
+    await UserRepository().upsertUser(user);
+
+    // ✅ 로그인 성공 후 라우팅
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${user.name ?? '사용자'}님 환영합니다!')),
     );
-  } on AuthException catch (e) {
-    if (!context.mounted) return;
-    final msg = switch (e.code) {
-      'canceled' => '로그인이 취소되었습니다.',
-      'network'  => '네트워크 상태를 확인해 주세요.',
-      'config'   => '로그인 설정이 올바르지 않습니다.',
-      _          => e.message,
-    };
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+    Navigator.pushReplacementNamed(context, '/home');
   } catch (e) {
-    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('로그인 실패: $e')),
     );

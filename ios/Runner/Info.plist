@@ -20,10 +20,8 @@
 	<array>
 		<!-- Google -->
 		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>google</string>
+			<key>CFBundleTypeRole</key><string>Editor</string>
+			<key>CFBundleURLName</key><string>google</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4</string>
@@ -32,8 +30,7 @@
 
 		<!-- Naver -->
 		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
+			<key>CFBundleTypeRole</key><string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<!-- Client ID 기반 URL Scheme -->
@@ -88,9 +85,9 @@
 	<true/>
 
 	<!-- 🔑 네이버 로그인 전용 설정 -->
-    <key>NaverServiceAppName</key><string>예배 찬송가</string>
-    <key>NaverServiceAppUrlScheme</key><string>naveruCalTrNx7kUnkKbdsV7L</string>
-    <key>NaverConsumerKey</key><string>uCalTrNx7kUnkKbdsV7L</string>
-    <key>NaverConsumerSecret</key><string>AdDC6nLXyg</string>
-  </dict>
+	<key>NidUrlScheme</key><string>naveruCalTrNx7kUnkKbdsV7L</string>
+	<key>NidClientID</key><string>uCalTrNx7kUnkKbdsV7L</string>
+    <key>NidClientSecret</key><string>AdDC6nLXyg</string>
+    <key>NidAppName</key><string>예배찬송가</string>
+</dict>
 </plist>

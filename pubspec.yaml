@@ -28,20 +28,18 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  flutter_svg: ^2.0.7
+  flutter_svg: ^2.2.1
   flutter:
     sdk: flutter
-  kakao_flutter_sdk_user: ^1.7.0
-  flutter_web_auth_2: ^2.0.4
-  http: ^1.1.0
+  kakao_flutter_sdk_user: ^1.9.7
+  http: ^1.5.0
 
-  flutter_naver_login: ^1.7.0   # 최신 버전으로 맞춰도 OK
-  device_info_plus: ^11.0.0     # 시뮬레이터 감지용
+  flutter_naver_login: ^2.1.1
 
   firebase_core: ^3.15.2
   cloud_firestore: ^5.6.12
 
-  google_sign_in: ^6.2.1
+  google_sign_in: ^7.1.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

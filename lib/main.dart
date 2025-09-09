@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'section0_screen.dart';
 import 'constants/colors.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 
@@ -9,6 +10,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   KakaoSdk.init(nativeAppKey: '964ca6284360a7db3f8400c26a5d4be9'); // kakao 접두사 없이 “키만”
+  await GoogleSignIn.instance.initialize(
+    clientId: '800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4.apps.googleusercontent.com'
+  );
   runApp(const MyApp());
 }
 
