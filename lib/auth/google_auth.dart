@@ -2,20 +2,31 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:google_sign_in/google_sign_in.dart';
+
 import '../UserRepository.dart';
 import '../auth/resualt_auth.dart';
 
 class GoogleAuth implements AuthService {
   @override
   Future<AuthUser> signIn() async {
-    // 1) Google 로그인
-    final account = await GoogleSignIn.instance.authenticate();
+    final googleSignIn = GoogleSignIn.instance;
+
+    // 초기화 (Web client ID 넣기)
+    await googleSignIn.initialize(
+      serverClientId:
+      "800123758723-bqklphkptd2t5cpahu3kfocickl58rbp.apps.googleusercontent.com",
+    );
+
+    // ✅ 로그인 (signIn → authenticate 로 변경됨)
+    final account = await googleSignIn.authenticate();
     if (account == null) {
       throw Exception('사용자가 Google 로그인을 취소했습니다.');
     }
+
+    // 토큰 얻기
     final auth = await account.authentication;
 
-    // 2) Cloud Functions 에서 Firebase Custom Token 발급
+    // Cloud Functions 호출
     final resp = await http.post(
       Uri.parse(
           'https://asia-northeast3-worship-hymn.cloudfunctions.net/googleLogin'),
@@ -29,12 +40,12 @@ class GoogleAuth implements AuthService {
     final firebaseCustomToken =
     jsonDecode(resp.body)['firebaseToken'] as String;
 
-    // 3) Firebase 로그인
-    final fbUserCred = await fb.FirebaseAuth.instance
-        .signInWithCustomToken(firebaseCustomToken);
+    // Firebase 로그인
+    final fbUserCred =
+    await fb.FirebaseAuth.instance.signInWithCustomToken(firebaseCustomToken);
     final fb.User firebaseUser = fbUserCred.user!;
 
-    // 4) 변환해서 Firestore 저장
+    // UserRepository 저장
     final authUser = AuthUser(
       uid: firebaseUser.uid,
       provider: AuthProvider.google,

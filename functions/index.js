@@ -74,3 +74,38 @@ exports.kakaoLogin = onRequest(async (req, res) => {
     return res.status(500).send(e.message || "server error");
   }
 });
+
+// ─────────── 구글 로그인 ───────────
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client();
+
+exports.googleLogin = onRequest(async (req, res) => {
+  try {
+    if (req.method !== "POST") return res.status(405).send("POST only");
+    const { idToken } = req.body || {};
+    if (!idToken) return res.status(400).send("missing idToken");
+
+    // 1) Google 토큰 검증
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: "800123758723-bqklphkptd2t5cpahu3kfocickl58rbp.apps.googleusercontent.com", // Firebase 콘솔에서 발급받은 웹 클라이언트 ID
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.sub) return res.status(401).send("invalid idToken");
+
+    const uid = `google:${payload.sub}`;
+
+    // 2) Firebase Custom Token 발급
+    const customToken = await admin.auth().createCustomToken(uid, {
+      provider: "google",
+      email: payload.email || null,
+      name: payload.name || null,
+      picture: payload.picture || null,
+    });
+
+    return res.json({ firebaseToken: customToken });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send(e.message || "server error");
+  }
+});
