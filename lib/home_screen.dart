@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../constants/text_styles.dart';
-import 'score_screen.dart';
 import 'genre_scroll.dart';
 import 'main_screen.dart';
 
@@ -40,7 +39,6 @@ class HomeScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 14),
             ),
 
-            // 검색창과 장르별 사이에 빈칸
             const SizedBox(height: 8),
 
             // 장르별
@@ -48,11 +46,15 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 12),
             GenreScroll(
               onTopicSelected: (topic, hymns) {
-                final scoreScreen = MainScreen.of(context)?.scoreKey.currentState;
-                if (scoreScreen != null) {
-                  scoreScreen.applyGenre(topic, hymns); // 리스트 변경
-                  MainScreen.of(context)?.goToTab(1);    // 탭 이동
-                }
+                final main = MainScreen.of(context);
+                // 1) 먼저 탭 이동 (예: Score 탭이 1번 인덱스라고 가정)
+                main?.goToTab(1);
+
+                // 2) 다음 프레임에서 ScoreScreen이 빌드된 뒤 상태에 접근
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  final score = main?.scoreKey.currentState;
+                  score?.applyGenre(topic, hymns);
+                });
               },
             ),
 

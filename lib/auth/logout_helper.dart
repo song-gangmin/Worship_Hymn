@@ -32,12 +32,4 @@ Future<void> appLogout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   } catch (_) {}
-
-  // 4) (보조) 루트 네비에서 스택 비우고 로그인 화면
-  if (context.mounted) {
-    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const Section1Screen()),
-          (_) => false,
-    );
-  }
 }

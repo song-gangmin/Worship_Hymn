@@ -12,14 +12,6 @@ class _Section0ScreenState extends State<Section0Screen> {
   @override
   void initState() {
     super.initState();
-
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const Section1Screen()),
-      );
-    });
   }
 
   @override
