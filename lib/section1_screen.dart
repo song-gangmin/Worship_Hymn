@@ -222,20 +222,15 @@ Future<void> handleSignIn({
 }) async {
   try {
     debugPrint('[LOGIN] START');
-    final user = await service.signIn();   // ✅ 여기서 AuthUser 반환
+    final user = await service.signIn();   // 여기서 Firebase 로그인까지 끝
 
-    if (!context.mounted) return;
-
-    // MainScreen으로 이동 시 AuthUser의 값 사용
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => MainScreen(
-          name: user.name ?? '이름 없음',
-          email: user.email ?? '이메일 없음',  // ✅ 이제 null이 아님
-        ),
-      ),
-          (_) => false,
-    );
+    // ✅ 화면전환은 하지 않는다. AuthGate가 자동으로 MainScreen을 띄움.
+    // (원한다면 Firestore 업서트 정도만 비동기로)
+    try {
+      await UserRepository().upsertUser(user);
+    } catch (e, st) {
+      debugPrint('[LOGIN] Firestore upsert FAIL: $e\n$st');
+    }
   } catch (e, st) {
     debugPrint('[LOGIN] ERROR: $e\n$st');
     if (!context.mounted) return;
