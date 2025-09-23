@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../constants/text_styles.dart';
 import 'section1_screen.dart';
+import 'auth/logout_helper.dart';
+
 
 class SettingScreen extends StatelessWidget {
   final String name;
@@ -96,15 +98,9 @@ class SettingScreen extends StatelessWidget {
                   _SettingItem(
                     title: signedIn ? '로그아웃' : '로그인',
                     isDestructive: signedIn,
-                    onTap: () {
+                    onTap: () async {
                       if (signedIn) {
-                        // 로그아웃 → Section1Screen으로 이동
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Section1Screen(),
-                          ),
-                        );
+                        await appLogout(context);
                       } else {
                         // 로그인 → Section1Screen으로 이동
                         Navigator.push(

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
+
 
 import '../UserRepository.dart';
 import '../auth/resualt_auth.dart';
@@ -17,7 +19,7 @@ class GoogleAuth implements AuthService {
       "800123758723-bqklphkptd2t5cpahu3kfocickl58rbp.apps.googleusercontent.com",
     );
 
-    // ✅ 로그인 (signIn → authenticate 로 변경됨)
+    // 로그인
     final account = await googleSignIn.authenticate();
     if (account == null) {
       throw Exception('사용자가 Google 로그인을 취소했습니다.');
@@ -26,7 +28,7 @@ class GoogleAuth implements AuthService {
     // 토큰 얻기
     final auth = await account.authentication;
 
-    // Cloud Functions 호출
+    // Cloud Functions 호출 (커스텀 토큰 발급)
     final resp = await http.post(
       Uri.parse(
           'https://asia-northeast3-worship-hymn.cloudfunctions.net/googleLogin'),
@@ -41,18 +43,31 @@ class GoogleAuth implements AuthService {
     jsonDecode(resp.body)['firebaseToken'] as String;
 
     // Firebase 로그인
-    final fbUserCred =
-    await fb.FirebaseAuth.instance.signInWithCustomToken(firebaseCustomToken);
+    debugPrint("[GoogleAuth] signing in with custom token...");
+    final fbUserCred = await fb.FirebaseAuth.instance
+        .signInWithCustomToken(firebaseCustomToken);
+    debugPrint("[GoogleAuth] firebase login success: ${fbUserCred.user}");
     final fb.User firebaseUser = fbUserCred.user!;
 
-    // UserRepository 저장
+    // ✅ AuthUser 생성 (uid는 Firebase, 나머지는 GoogleSignIn에서)
     final authUser = AuthUser(
       uid: firebaseUser.uid,
       provider: AuthProvider.google,
-      name: firebaseUser.displayName,
-      email: firebaseUser.email,
-      photoUrl: firebaseUser.photoURL,
+      name: account.displayName,
+      email: account.email,
+      photoUrl: account.photoUrl,
     );
+
+    // (옵션) Firebase User에도 업데이트 → authStateChanges() 쓸 때 유용
+    try {
+      await firebaseUser.updateDisplayName(account.displayName);
+      await firebaseUser.updatePhotoURL(account.photoUrl);
+      await firebaseUser.reload();
+    } catch (e) {
+      debugPrint('[GoogleAuth] FirebaseUser update skipped: $e');
+    }
+
+    // DB 저장
     await UserRepository().upsertUser(authUser);
 
     return authUser;
@@ -60,9 +75,9 @@ class GoogleAuth implements AuthService {
 
   @override
   Future<void> signOut() async {
-    try {
-      await GoogleSignIn.instance.signOut();
-    } catch (_) {}
-    await fb.FirebaseAuth.instance.signOut();
+    // 1) 연결 해제(계정 연결 자체 끊기) → 2) 로그아웃
+    try { await GoogleSignIn.instance.disconnect(); } catch (_) {}
+    try { await GoogleSignIn.instance.signOut();     } catch (_) {}
+    // Firebase signOut은 공통 헬퍼에서 호출
   }
 }

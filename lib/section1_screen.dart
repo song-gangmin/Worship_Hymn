@@ -221,26 +221,21 @@ Future<void> handleSignIn({
   required AuthService service,
 }) async {
   try {
-    final user = await service.signIn();
+    debugPrint('[LOGIN] START');
+    final user = await service.signIn();   // ✅ 여기서 AuthUser 반환
 
-    // 화면 먼저 전환
     if (!context.mounted) return;
+
+    // MainScreen으로 이동 시 AuthUser의 값 사용
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => MainScreen(
           name: user.name ?? '이름 없음',
-          email: user.email ?? '이메일 없음',
+          email: user.email ?? '이메일 없음',  // ✅ 이제 null이 아님
         ),
       ),
           (_) => false,
     );
-
-    // Firestore 저장 (실패해도 화면 유지)
-    try {
-      await UserRepository().upsertUser(user); // ✅ AuthUser 기반
-    } catch (e, st) {
-      debugPrint('[LOGIN] Firestore upsert FAIL: $e\n$st');
-    }
   } catch (e, st) {
     debugPrint('[LOGIN] ERROR: $e\n$st');
     if (!context.mounted) return;
@@ -249,3 +244,6 @@ Future<void> handleSignIn({
     );
   }
 }
+
+
+

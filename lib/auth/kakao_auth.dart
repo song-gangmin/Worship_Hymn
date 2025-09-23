@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:kakao_flutter_sdk_auth/kakao_flutter_sdk_auth.dart';
 
 import '../UserRepository.dart';
 import '../auth/resualt_auth.dart';
@@ -54,8 +55,12 @@ class KakaoAuth implements AuthService {
   @override
   Future<void> signOut() async {
     try {
-      await UserApi.instance.logout(); // 카카오 로그아웃
-    } catch (_) {}
-    await fb.FirebaseAuth.instance.signOut();
+      // ✅ 가장 확실: 앱-계정 연결 자체 해제 (다음 로그인은 항상 새로)
+      await UserApi.instance.unlink();
+    } catch (_) {
+      // unlink 실패 시: 로그아웃 + 토큰 캐시 비우기
+      try { await UserApi.instance.logout(); } catch (_) {}
+      try { await TokenManagerProvider.instance.manager.clear(); } catch (_) {}
+    }
   }
 }
