@@ -221,7 +221,6 @@ Future<void> handleSignIn({
   required AuthService service,
 }) async {
   try {
-    debugPrint('[LOGIN] START');
     final user = await service.signIn();   // 여기서 Firebase 로그인까지 끝
 
     // ✅ 화면전환은 하지 않는다. AuthGate가 자동으로 MainScreen을 띄움.
@@ -229,10 +228,8 @@ Future<void> handleSignIn({
     try {
       await UserRepository().upsertUser(user);
     } catch (e, st) {
-      debugPrint('[LOGIN] Firestore upsert FAIL: $e\n$st');
     }
   } catch (e, st) {
-    debugPrint('[LOGIN] ERROR: $e\n$st');
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('로그인 실패: $e')),

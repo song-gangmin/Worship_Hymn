@@ -39,13 +39,16 @@ class KakaoAuth implements AuthService {
     await fb.FirebaseAuth.instance.signInWithCustomToken(firebaseCustomToken);
     final fb.User firebaseUser = fbUserCred.user!;
 
+    final kakaoUser = await UserApi.instance.me();
+    final account = kakaoUser.kakaoAccount;
+
     // 4) 변환
     final authUser = AuthUser(
-      uid: firebaseUser.uid,
+      uid: 'kakao:${kakaoUser.id}',
       provider: AuthProvider.kakao,
-      name: firebaseUser.displayName,
-      email: firebaseUser.email,
-      photoUrl: firebaseUser.photoURL,
+      name: account?.profile?.nickname ?? '이름 없음',
+      email: account?.email ?? '이메일 없음',
+      photoUrl: account?.profile?.profileImageUrl,
     );
 
     await UserRepository().upsertUser(authUser);

@@ -22,12 +22,7 @@ class _Section0ScreenState extends State<Section0Screen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 아이콘 (svg나 png 기반 이미지)
-            Image.asset(
-              'assets/icon/app_icon.png',
-              width: 240,
-              height: 240,
-            ),
+            Image.asset('assets/icon/app_icon.png', width: 240, height: 240,),
           ],
         ),
       ),

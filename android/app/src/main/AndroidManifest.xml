@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.worship_hymn">
+    package="com.worship.hymn.worship_hymn">
     <!-- 인터넷 권한 (카카오 SDK 통신) -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
@@ -16,21 +16,6 @@
         android:label="예배찬송가"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-
-        <!-- ✅ 카카오 인증 콜백 액티비티 (반드시 네이티브앱키와 스킴 일치) -->
-        <activity
-            android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <!-- ↓↓↓ 여기에 kakao + 네이티브앱키 -->
-                <data android:scheme="kakao964ca6284360a7db3f8400c26a5d4be9"
-                      android:host="oauth"/>
-                <data android:scheme="myapp" android:host="login" android:path="/callback"/>
-            </intent-filter>
-        </activity>
 
         <activity
             android:name=".MainActivity"

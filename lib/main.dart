@@ -8,6 +8,7 @@ import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 
@@ -18,7 +19,10 @@ void main() async {
   await GoogleSignIn.instance.initialize(
       clientId: '800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4.apps.googleusercontent.com'
   );
+  FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
   runApp(const MyApp());
+  print("PROJECT_ID: ${FirebaseFirestore.instance.app?.options.projectId}");
+
 }
 
 class MyApp extends StatelessWidget {
@@ -26,31 +30,43 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (ctx, snap) {
-        // 여기서 바로 MaterialApp을 갈아치움
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const MaterialApp(
-            home: Section0Screen(),
-            debugShowCheckedModeBanner: false,
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        scaffoldBackgroundColor: AppColors.background,
+        useMaterial3: true,
+      ),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (ctx, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Section0Screen(); // 로딩
+          }
+
+          final user = snap.data;
+          if (user == null) {
+            return const Section1Screen(); // 로그인 화면
+          }
+
+          // ✅ Firestore users/{uid} 문서를 구독
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .snapshots(),
+            builder: (context, snap2) {
+              if (!snap2.hasData) {
+                return const Section0Screen(); // 로딩 표시
+              }
+              final data = snap2.data?.data() ?? {};
+              final name = data['name'] ?? user.displayName ?? '이름 없음';
+              final email = data['email'] ?? user.email ?? '이메일 없음';
+
+              return MainScreen(name: name, email: email);
+            },
           );
-        }
-        if (snap.data != null) {
-          final u = snap.data!;
-          return MaterialApp(
-            home: MainScreen(
-              name: u.displayName ?? '이름 없음',
-              email: u.email ?? '이메일 없음',
-            ),
-            debugShowCheckedModeBanner: false,
-          );
-        }
-        return const MaterialApp(
-          home: Section1Screen(),
-          debugShowCheckedModeBanner: false,
-        );
-      },
+        },
+      ),
     );
   }
 }
