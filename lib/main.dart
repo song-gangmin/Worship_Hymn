@@ -20,8 +20,8 @@ void main() async {
       clientId: '800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4.apps.googleusercontent.com'
   );
   FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
+
   runApp(const MyApp());
-  print("PROJECT_ID: ${FirebaseFirestore.instance.app?.options.projectId}");
 
 }
 

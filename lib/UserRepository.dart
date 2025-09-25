@@ -9,6 +9,8 @@ class UserRepository {
     print(">>> Firestore upsert 시작: ${user.uid}, ${user.name}, ${user.email}");
 
     final doc = _col.doc(user.uid);
+    print("🔥 doc 성공");
+
     try {
       await doc.set({
         'uid': user.uid,
@@ -27,7 +29,8 @@ class UserRepository {
       print("📄 Firestore 문서 내용: ${snap.data()}");
     } catch (e, st) {
       print("❌ Firestore 저장 실패: $e");
-      print(st);
+      print("🔍 StackTrace: $st");
+      rethrow; // 에러를 위로 다시 던져서 더 자세히 보자
     }
   }
 }
