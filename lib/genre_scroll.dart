@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/text_styles.dart';
 import 'constants/topic_hymns.dart';
 
 class GenreScroll extends StatelessWidget {

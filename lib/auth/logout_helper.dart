@@ -6,9 +6,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:kakao_flutter_sdk_auth/kakao_flutter_sdk_auth.dart';
 
-// 로그인 화면(보조 라우팅; AuthGate가 알아서 하더라도 안전하게)
-import '../section1_screen.dart';
-
 // 필요시 SharedPreferences/Hive/secure storage 등 로컬캐시도 지울 수 있어요
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -227,9 +227,9 @@ Future<void> handleSignIn({
     // (원한다면 Firestore 업서트 정도만 비동기로)
     try {
       await UserRepository().upsertUser(user);
-    } catch (e, st) {
+    } catch (e) {
     }
-  } catch (e, st) {
+  } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('로그인 실패: $e')),

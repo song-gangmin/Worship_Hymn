@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'section1_screen.dart'; // 로그인 화면
-
 class Section0Screen extends StatefulWidget {
   const Section0Screen({super.key});
 
