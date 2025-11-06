@@ -39,7 +39,7 @@ class HomeScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 14),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
 
             // 장르별
             Text('장르별', style: AppTextStyles.sectionTitle),
@@ -58,7 +58,7 @@ class HomeScreen extends StatelessWidget {
               },
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
 
             // 최근 본 찬송가
             Row(

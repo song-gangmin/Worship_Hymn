@@ -28,7 +28,6 @@ class GenreScroll extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border.all(color: Colors.black12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(genre, style: const TextStyle(fontSize: 15)),

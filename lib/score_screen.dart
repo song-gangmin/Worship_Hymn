@@ -3,6 +3,7 @@ import '../constants/colors.dart';
 import '../constants/title_hymns.dart';
 import '../constants/text_styles.dart';
 import 'score_detail_screen.dart';
+import 'main_screen.dart';
 
 /// [grouped]이 true면 구간(1~100 …)별 카드 + 접/펼침.
 /// false면 단일 리스트로 바로 출력 (장르별 진입 시 사용).
@@ -172,7 +173,13 @@ class ScoreScreenState extends State<ScoreScreen> {
                     IconButton(
                       icon: const Icon(Icons.close, size: 20),
                       splashRadius: 18,
-                      onPressed: resetToDefault, // ← 기본 모드로 복귀
+                      onPressed: () {
+                        // ✅ 1) 악보 탭 초기화
+                        resetToDefault();
+
+                        final main = MainScreen.of(context);
+                        main?.goToTab(0); // ✅ 홈 탭으로 이동
+                      },
                     ),
                   ],
                 )
@@ -223,12 +230,12 @@ class ScoreScreenState extends State<ScoreScreen> {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           children: [
-            Text(numberPart, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(numberPart, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
             const SizedBox(width: 8),
-            Expanded(child: Text(titlePart, style: const TextStyle(fontSize: 14))),
+            Expanded(child: Text(titlePart, style: AppTextStyles.body.copyWith(fontSize: 17, fontWeight:FontWeight.w500))),
           ],
         ),
       ),

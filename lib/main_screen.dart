@@ -46,8 +46,8 @@ class _MainScreenState extends State<MainScreen> {
       const BookmarkScreen(),
       // ✅ 로그인 정보 전달
       SettingScreen(
-        name: widget.name ?? '로그인 하세요',
-        email: widget.email ?? '이메일 정보 없음',
+        name: widget.name ?? '',
+        email: widget.email ?? '',
       ),
     ];
   }
@@ -96,47 +96,19 @@ class _MainScreenState extends State<MainScreen> {
           ),
           items: [
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icon/home.svg',
-                width: 20,
-                height: 20,
-                color: _selectedIndex == 0
-                    ? const Color(0xFF673E38)
-                    : Colors.grey,
-              ),
+              icon: SvgPicture.asset('assets/icon/home.svg', width: 20, height: 20, color: _selectedIndex == 0 ? const Color(0xFF673E38) : Colors.grey,),
               label: '홈',
             ),
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icon/score.svg',
-                width: 20,
-                height: 20,
-                color: _selectedIndex == 1
-                    ? const Color(0xFF673E38)
-                    : Colors.grey,
-              ),
+              icon: SvgPicture.asset('assets/icon/score.svg', width: 20, height: 20, color: _selectedIndex == 1 ? const Color(0xFF673E38) : Colors.grey,),
               label: '악보',
             ),
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icon/bookmark.svg',
-                width: 20,
-                height: 20,
-                color: _selectedIndex == 2
-                    ? const Color(0xFF673E38)
-                    : Colors.grey,
-              ),
+              icon: SvgPicture.asset('assets/icon/bookmark.svg', width: 20, height: 20, color: _selectedIndex == 2 ? const Color(0xFF673E38) : Colors.grey,),
               label: '즐겨찾기',
             ),
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icon/setting.svg',
-                width: 20,
-                height: 20,
-                color: _selectedIndex == 3
-                    ? const Color(0xFF673E38)
-                    : Colors.grey,
-              ),
+              icon: SvgPicture.asset('assets/icon/setting.svg', width: 20, height: 20, color: _selectedIndex == 3 ? const Color(0xFF673E38) : Colors.grey,),
               label: '설정',
             ),
           ],

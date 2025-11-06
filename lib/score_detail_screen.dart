@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'constants/text_styles.dart';
 
 class ScoreDetailScreen extends StatefulWidget {
   final int hymnNumber;
@@ -62,7 +63,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
       backgroundColor: Colors.white,
       elevation: 0.5,
       centerTitle: true,
-      title: Text('$_current장', style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text('$_current장', style: AppTextStyles.sectionTitle),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new),
         onPressed: () => Navigator.pop(context),

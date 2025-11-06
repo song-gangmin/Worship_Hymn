@@ -11,7 +11,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -42,12 +41,10 @@ class MyApp extends StatelessWidget {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Section0Screen(); // 로딩
           }
-
           final user = snap.data;
           if (user == null) {
             return const Section1Screen(); // 로그인 화면
           }
-
           // ✅ Firestore users/{uid} 문서를 구독
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: FirebaseFirestore.instance
@@ -59,11 +56,10 @@ class MyApp extends StatelessWidget {
                 return const Section0Screen(); // 로딩 표시
               }
               final data = snap2.data?.data() ?? {};
-              final name = data['name'] ?? user.displayName ?? '이름 없음';
-              final email = data['email'] ?? user.email ?? '이메일 없음';
-
-              return MainScreen(name: name, email: email);
-            },
+              return MainScreen(
+                name: data['name'] ?? user.displayName ?? '',   // ← 기본값 제거
+                email: data['email'] ?? user.email ?? '',       // ← 기본값 제거
+              );            },
           );
         },
       ),
