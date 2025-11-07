@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../constants/text_styles.dart';
+import 'dart:async';
+
+import 'services/playlist_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class BookmarkScreen extends StatefulWidget {
   const BookmarkScreen({
@@ -15,28 +20,40 @@ class BookmarkScreen extends StatefulWidget {
 }
 
 class BookmarkScreenState extends State<BookmarkScreen> {
-  // ---- 재생목록 & 상태 ----
-  final List<String> playlists = ['전체', '새벽기도', '예배', '캠프/수양회', '수요', '복음'];
   int selectedPlaylistIndex = 0;
 
   bool isEditing = false;
   Set<int> selectedItems = {};
 
+  late PlaylistService playlistService;
+  String uid = 'test_user'; // 나중에 FirebaseAuth.instance.currentUser!.uid 로 변경
+
+  List<Map<String, dynamic>> originalPlaylists = [];
+  List<Map<String, dynamic>> editingPlaylists = [];
+  Set<int> originalSelectedItems = {};
+
   // 데모용 데이터
-  final List<String> hymns = const [
-    '내 주 되신 주를 더 사랑하고',
-    '구주 예수 의지함이',
-    '변찮는 주님의 사랑과',
-    '예수로 나의 구주 삼고',
-    '시온의 영광이 빛나는 아침',
-    '나 같은 죄인 살리신',
-    '아 하나님의 은혜로',
-    '주 하나님 지으신 모든 세계',
-    '주 하나님 독생자 예수',
-    '예수 나를 위하여',
-    '큰 영광 중에 계신 주',
-    '예배드립니다',
-  ];
+  final List<String> hymns = const [];
+
+  StreamSubscription? _playlistSub;
+
+
+  @override
+  void initState() {
+    super.initState();
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      uid = currentUser.uid;
+      createUserIfNotExists(uid); // ✅ Firestore 사용자 문서 자동 생성
+    }
+    playlistService = PlaylistService(uid: uid);
+  }
+
+  @override
+  void dispose() {
+    _playlistSub?.cancel();
+    super.dispose();
+  }
 
   // ---- life-cycle ----
   void _notifySelection() {
@@ -51,6 +68,23 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   void confirmDeleteSelected() {
     if (selectedItems.isEmpty) return; // 아무것도 선택 안 됐으면 무시
     _confirmDeleteSelected(); // 내부 다이얼로그 실행
+  }
+
+  Future<void> createUserIfNotExists(String uid) async {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    final userSnap = await userRef.get();
+
+    if (!userSnap.exists) {
+      await userRef.set({
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await userRef.collection('playlists').add({
+        'name': '전체',
+        'createdAt': FieldValue.serverTimestamp(),
+        'default': true,
+      });
+    }
   }
 
   /// 즐겨찾기한 노래 삭제 함수
@@ -84,31 +118,25 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   }
 
   /// 재생목록 삭제 함수
-  void _confirmDeletePlaylist() {
-    final currentName = playlists[selectedPlaylistIndex];
-    showDialog(
+  Future<void> _confirmDeletePlaylist(String id) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('재생목록 삭제'),
-        content: Text('‘$currentName’을(를) 삭제하시겠습니까?'),
+        content: const Text('이 재생목록을 삭제하시겠습니까?'),
         actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                playlists.removeAt(selectedPlaylistIndex);
-                selectedPlaylistIndex = 0; // 전체로 이동
-              });
-              Navigator.pop(ctx);
-            },
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('삭제', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+
+    if (confirmed == true) {
+      await playlistService.deletePlaylist(id);
+    }
   }
 
   @override
@@ -121,10 +149,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
         leading: isEditing
             ? IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
-          onPressed: () {
-            setState(() => isEditing = false);
-            _clearSelectionAndNotify();
-          },
+          onPressed: _showDiscardChangesDialog,
         )
             : null,
         title: isEditing
@@ -132,19 +157,44 @@ class BookmarkScreenState extends State<BookmarkScreen> {
             : const Text('즐겨찾기', style: AppTextStyles.headline),
         centerTitle: false,
         actions: [
-          if (isEditing && playlists[selectedPlaylistIndex] != '전체') // ✅ 전체가 아닐 때만 표시
+          if (isEditing && editingPlaylists.isNotEmpty && editingPlaylists[selectedPlaylistIndex]['name'] != '전체')
             Padding(
-              padding: const EdgeInsets.only(left: 10, right: 0), // 👉 여백 조절
+              padding: const EdgeInsets.only(left: 10, right: 0),
               child: IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.black87),
                 tooltip: '재생목록 삭제',
-                onPressed: _confirmDeletePlaylist,
+                onPressed: () {
+                  final id = editingPlaylists[selectedPlaylistIndex]['id'];
+                  final name = editingPlaylists[selectedPlaylistIndex]['name'];
+                  _showDeletePlaylistDialog(id, name);
+                },
               ),
             ),
           TextButton(
-            onPressed: () {
-              setState(() => isEditing = !isEditing);
+            onPressed: () async {
+              // ✅ 편집 중이 아닐 때 → 편집모드 진입
+              if (!isEditing) {
+                setState(() => isEditing = true);
+                return;
+              }
+
+              // ✅ 편집 중일 때 → 편집 완료
+              setState(() => isEditing = false);
               _clearSelectionAndNotify();
+
+              // Firestore에 실제 저장
+              for (final p in editingPlaylists) {
+                if (p['id'] != 'all') {
+                  await playlistService.renamePlaylist(p['id'], p['name']);
+                }
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('변경사항이 저장되었습니다.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             },
             child: Text(
               isEditing ? '완료' : '편집',
@@ -205,7 +255,10 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
   // ---------------- Edit mode ----------------
   Widget _buildEditMode() {
-    final title = playlists[selectedPlaylistIndex];
+    if (editingPlaylists.isEmpty || selectedPlaylistIndex >= editingPlaylists.length) {
+      return const Center(child: Text('재생목록이 없습니다.'));
+    }
+    final title = editingPlaylists[selectedPlaylistIndex]['name'] ?? '';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -215,12 +268,20 @@ class BookmarkScreenState extends State<BookmarkScreen> {
           // 제목 + 연필(이름수정)
           Row(
             children: [
-              Text(title, style: AppTextStyles.headline),
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: () => _showRenameDialog(currentName: title, index: selectedPlaylistIndex),
-                child: const Icon(Icons.edit, size: 20, color: Colors.black54),
+              Text(
+                editingPlaylists[selectedPlaylistIndex]['name'] ?? '',
+                style: AppTextStyles.headline,
               ),
+              const SizedBox(width: 6),
+              if (editingPlaylists[selectedPlaylistIndex]['name'] != '전체')
+                GestureDetector(
+                  onTap: () {
+                    final id = editingPlaylists[selectedPlaylistIndex]['id'] as String;
+                    final currentName = editingPlaylists[selectedPlaylistIndex]['name'] as String;
+                    _showRenameDialog(id, currentName);
+                  },
+                  child: const Icon(Icons.edit, size: 20, color: Colors.black54),
+                ),
             ],
           ),
           const SizedBox(height: 20),
@@ -293,43 +354,81 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
   // ---------------- UI parts ----------------
   Widget _buildPlaylistChips() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            ...List.generate(playlists.length, (i) {
-              final selected = selectedPlaylistIndex == i;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => setState(() => selectedPlaylistIndex = i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [if (!selected) BoxShadow(color: Colors.black12.withOpacity(0.04), blurRadius: 2, offset: const Offset(1, 2))],
-                    ),
-                    child: Text(
-                      playlists[i],
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: selected ? Colors.white : Colors.black87),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: playlistService.getPlaylists(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        // Firestore에서 받은 데이터
+        final data = [
+          {'id': 'all', 'name': '전체'},
+          ...snapshot.data!,
+        ];
+
+        // ✅ Firestore에서 새로 들어온 데이터를 원본으로 저장
+        originalPlaylists = List<Map<String, dynamic>>.from(data);
+
+        // ✅ 편집모드 아닐 때는 항상 editingPlaylists 동기화
+        if (!isEditing) {
+          editingPlaylists = List<Map<String, dynamic>>.from(originalPlaylists);
+        }
+
+        // ✅ 현재 화면에서는 editingPlaylists로 표시
+        final playlists = editingPlaylists;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: playlists.map((p) {
+              final name = p['name'];
+              final selected = name == playlists[selectedPlaylistIndex]['name'];
+              return GestureDetector(
+                onTap: () {
+                  setState(() => selectedPlaylistIndex = playlists.indexOf(p));
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.primary : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      if (!selected)
+                        BoxShadow(
+                          color: Colors.black12.withOpacity(0.05),
+                          blurRadius: 2,
+                          offset: const Offset(1, 2),
+                        ),
+                    ],
+                  ),
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      color: selected ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
                     ),
                   ),
                 ),
               );
-            }),
-          ],
-        ),
-      ),
+            }).toList(),
+          ),
+        );
+      },
     );
   }
+
+
+
 
   // ---------------- Dialogs ----------------
   void _showCreateDialog() {
     final c = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => _playlistDialog(
@@ -337,22 +436,50 @@ class BookmarkScreenState extends State<BookmarkScreen> {
         title: '새 재생목록',
         confirmText: '추가',
         controller: c,
-        onConfirm: () {
+        onConfirm: () async {
           final name = c.text.trim();
-          if (name.isNotEmpty && !playlists.contains(name)) {
-            setState(() {
-              playlists.add(name);
-              selectedPlaylistIndex = playlists.length - 1;
-            });
+
+          if (name.isEmpty) {
+            Navigator.pop(ctx);
+            return;
+          }
+
+          // ✅ 중복 검사
+          final exists = editingPlaylists.any((p) => p['name'] == name);
+          if (exists) {
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('이미 "$name" 재생목록이 존재합니다.'),
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Colors.black87,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+            return;
           }
           Navigator.pop(ctx);
+          // ✅ Firestore 추가
+          await playlistService.addPlaylist(name);
+
+          setState(() {}); // 🔹 즉시 반영
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('"$name" 재생목록이 추가되었습니다.'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppColors.primary,
+              duration: const Duration(seconds: 2),
+            ),
+          );
         },
       ),
     );
   }
 
-  void _showRenameDialog({required String currentName, required int index}) {
+  void _showRenameDialog(String id, String currentName) {
     final c = TextEditingController(text: currentName);
+
     showDialog(
       context: context,
       builder: (ctx) => _playlistDialog(
@@ -361,22 +488,90 @@ class BookmarkScreenState extends State<BookmarkScreen> {
         confirmText: '저장',
         controller: c,
         onConfirm: () {
-          final name = c.text.trim();
-          if (name.isNotEmpty) {
-            setState(() => playlists[index] = name);
+          final newName = c.text.trim();
+          if (newName.isEmpty) {
+            Navigator.pop(ctx);
+            return;
           }
+
           Navigator.pop(ctx);
+          setState(() {
+            final index = editingPlaylists.indexWhere((p) => p['id'] == id);
+            if (index != -1) {
+              editingPlaylists[index]['name'] = newName;
+            }
+          });
         },
       ),
     );
   }
 
+  Future<void> _showDiscardChangesDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _playlistDialog(
+        ctx,
+        title: '변경사항을 취소할까요?',
+        confirmText: '예',
+        showTextField: false, // ✅ 입력창 숨김
+        onConfirm: () {
+          Navigator.pop(ctx, true);
+        },
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        isEditing = false;
+        editingPlaylists = List<Map<String, dynamic>>.from(originalPlaylists);
+      });
+      _clearSelectionAndNotify();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('변경사항이 취소되었습니다.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showDeletePlaylistDialog(String id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _playlistDialog(
+        ctx,
+        title: '재생목록을 삭제할까요?',
+        confirmText: '삭제',
+        showTextField: false, // ✅ 입력창 숨김
+        onConfirm: () {
+          Navigator.pop(ctx, true);
+        },
+      ),
+    );
+
+    if (confirmed == true) {
+      await playlistService.deletePlaylist(id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"$name" 재생목록이 삭제되었습니다.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+
+
   Widget _playlistDialog(
       BuildContext ctx, {
         required String title,
         required String confirmText,
-        required TextEditingController controller,
-        required VoidCallback onConfirm,
+        TextEditingController? controller, // ✅ optional 로 변경
+        VoidCallback? onConfirm,
+        bool showTextField = true,         // ✅ 새 파라미터 추가
       }) {
     return AlertDialog(
       contentPadding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
@@ -385,10 +580,12 @@ class BookmarkScreenState extends State<BookmarkScreen> {
       title: Text(title, style: AppTextStyles.sectionTitle),
       content: SizedBox(
         width: 300,
-        child: Padding(
+        child: showTextField
+            ? Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
           child: TextField(
             controller: controller,
+            autofocus: true,
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.only(bottom: 4),
@@ -402,16 +599,20 @@ class BookmarkScreenState extends State<BookmarkScreen> {
               ),
             ),
           ),
-        ),
+        )
+            : const SizedBox.shrink(), // ✅ 입력창이 필요 없을 때 비움
       ),
       actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       actions: [
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            _dialogBtn(ctx, '취소', Colors.grey.shade200, Colors.black, () => Navigator.pop(ctx)),
+            _dialogBtn(ctx, '취소', Colors.grey.shade200, Colors.black,
+                    () => Navigator.pop(ctx, false)),
             const SizedBox(width: 10),
-            _dialogBtn(ctx, confirmText, AppColors.primary, Colors.white, onConfirm),
+            _dialogBtn(ctx, confirmText, AppColors.primary, Colors.white, () {
+              onConfirm?.call();
+            }),
           ],
         ),
       ],
