@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../constants/text_styles.dart';
+import 'widget/playlist_dialog.dart';
 import 'dart:async';
 
 import 'services/playlist_service.dart';
+import 'widget/playlist_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -11,9 +13,12 @@ class BookmarkScreen extends StatefulWidget {
   const BookmarkScreen({
     super.key,
     this.onSelectionChanged, // ✅ MainScreen 오버레이 트리거 콜백
+    this.onGoToTab,               // ✅ 추가
   });
 
   final ValueChanged<bool>? onSelectionChanged;
+  final ValueChanged<int>? onGoToTab; // ✅ 추가
+
 
   @override
   State<BookmarkScreen> createState() => BookmarkScreenState();
@@ -212,7 +217,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
       floatingActionButton: isEditing ? null : FloatingActionButton(
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
-        onPressed: () => _showCreateDialog(),
+        onPressed: () => _showCreatePlaylistDialog(context, playlistService),
         child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
     );
@@ -378,6 +383,10 @@ class BookmarkScreenState extends State<BookmarkScreen> {
         // ✅ 현재 화면에서는 editingPlaylists로 표시
         final playlists = editingPlaylists;
 
+        if (selectedPlaylistIndex >= playlists.length) {
+          selectedPlaylistIndex = playlists.isEmpty ? 0 : playlists.length - 1;
+        }
+
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -423,53 +432,29 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   }
 
 
-
-
   // ---------------- Dialogs ----------------
-  void _showCreateDialog() {
-    final c = TextEditingController();
-
+  void _showCreatePlaylistDialog(BuildContext context, PlaylistService playlistService) {
+    final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => _playlistDialog(
-        ctx,
+      builder: (ctx) => PlaylistDialog(
         title: '새 재생목록',
         confirmText: '추가',
-        controller: c,
+        controller: controller,
+        showTextField: true, // ✅ 새 재생목록은 입력 필드 필요
         onConfirm: () async {
-          final name = c.text.trim();
+          final name = controller.text.trim();
+          if (name.isEmpty) return;
 
-          if (name.isEmpty) {
-            Navigator.pop(ctx);
-            return;
-          }
-
-          // ✅ 중복 검사
-          final exists = editingPlaylists.any((p) => p['name'] == name);
-          if (exists) {
-            Navigator.pop(ctx);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('이미 "$name" 재생목록이 존재합니다.'),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: Colors.black87,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-            return;
-          }
           Navigator.pop(ctx);
-          // ✅ Firestore 추가
-          await playlistService.addPlaylist(name);
 
-          setState(() {}); // 🔹 즉시 반영
+          await playlistService.addPlaylist(name);
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('"$name" 재생목록이 추가되었습니다.'),
               behavior: SnackBarBehavior.floating,
               backgroundColor: AppColors.primary,
-              duration: const Duration(seconds: 2),
             ),
           );
         },
@@ -479,14 +464,13 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
   void _showRenameDialog(String id, String currentName) {
     final c = TextEditingController(text: currentName);
-
     showDialog(
       context: context,
-      builder: (ctx) => _playlistDialog(
-        ctx,
+      builder: (ctx) => PlaylistDialog(
         title: '재생목록 이름 수정',
         confirmText: '저장',
         controller: c,
+        showTextField: true, // ✅ 이름 수정도 입력창 필요
         onConfirm: () {
           final newName = c.text.trim();
           if (newName.isEmpty) {
@@ -509,10 +493,10 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   Future<void> _showDiscardChangesDialog() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => _playlistDialog(
-        ctx,
+      builder: (ctx) => PlaylistDialog(
         title: '변경사항을 취소할까요?',
         confirmText: '예',
+        controller: TextEditingController(),
         showTextField: false, // ✅ 입력창 숨김
         onConfirm: () {
           Navigator.pop(ctx, true);
@@ -539,24 +523,38 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   Future<void> _showDeletePlaylistDialog(String id, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => _playlistDialog(
-        ctx,
+      builder: (ctx) => PlaylistDialog(
         title: '재생목록을 삭제할까요?',
         confirmText: '삭제',
-        showTextField: false, // ✅ 입력창 숨김
-        onConfirm: () {
-          Navigator.pop(ctx, true);
-        },
+        controller: TextEditingController(),
+        showTextField: false,
+        onConfirm: () => Navigator.pop(ctx, true),
       ),
     );
 
     if (confirmed == true) {
-      await playlistService.deletePlaylist(id);
+      // ✅ 1. Firestore 삭제 요청은 비동기로 던져두고
+      playlistService.deletePlaylist(id); // await 제거
+
+      // ✅ 2. UI를 먼저 일반 모드로 강제 전환
+      if (mounted) {
+        setState(() {
+          isEditing = false;
+          selectedPlaylistIndex = 0;
+          selectedItems.clear();
+        });
+      }
+
+      // ✅ 3. Firestore 반영되면 StreamBuilder가 알아서 다시 렌더
+      // (이 타이밍은 몇백 ms 늦어도 무관)
+
+      // ✅ 4. 필요시 탭 전환 (MainScreen 콜백)
+      widget.onGoToTab?.call(2);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('"$name" 재생목록이 삭제되었습니다.'),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.redAccent,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -564,75 +562,6 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   }
 
 
-
-  Widget _playlistDialog(
-      BuildContext ctx, {
-        required String title,
-        required String confirmText,
-        TextEditingController? controller, // ✅ optional 로 변경
-        VoidCallback? onConfirm,
-        bool showTextField = true,         // ✅ 새 파라미터 추가
-      }) {
-    return AlertDialog(
-      contentPadding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: Colors.white,
-      title: Text(title, style: AppTextStyles.sectionTitle),
-      content: SizedBox(
-        width: 300,
-        child: showTextField
-            ? Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
-          child: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.only(bottom: 4),
-              hintText: '제목을 입력하세요',
-              hintStyle: AppTextStyles.caption.copyWith(fontSize: 16),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.black, width: 1),
-              ),
-            ),
-          ),
-        )
-            : const SizedBox.shrink(), // ✅ 입력창이 필요 없을 때 비움
-      ),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            _dialogBtn(ctx, '취소', Colors.grey.shade200, Colors.black,
-                    () => Navigator.pop(ctx, false)),
-            const SizedBox(width: 10),
-            _dialogBtn(ctx, confirmText, AppColors.primary, Colors.white, () {
-              onConfirm?.call();
-            }),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _dialogBtn(BuildContext ctx, String text, Color bg, Color fg, VoidCallback onPressed) {
-    return SizedBox(
-      width: 74, height: 38,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bg,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        onPressed: onPressed,
-        child: Text(text, style: AppTextStyles.body.copyWith(fontSize: 14, color: fg, fontWeight: FontWeight.w500)),
-      ),
-    );
-  }
 
   // ---------------- External actions (MainScreen에서 호출) ----------------
   void deleteSelected() {

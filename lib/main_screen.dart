@@ -60,6 +60,7 @@ class _MainScreenState extends State<MainScreen> {
             _hideDeleteOverlay();
           }
         },
+        onGoToTab: goToTab, // ✅ 추가: MainScreen의 goToTab 연결
       ),
       SettingScreen(
         name: widget.name ?? '',
