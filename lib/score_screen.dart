@@ -215,6 +215,7 @@ class ScoreScreenState extends State<ScoreScreen> {
     return items;
   }
 
+  /// 찬송가 장, 제목
   Widget _buildEntry(int num) {
     final raw = hymnTitles[num - 1];
     final sp = raw.indexOf(' ');
@@ -225,7 +226,7 @@ class ScoreScreenState extends State<ScoreScreen> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ScoreDetailScreen(hymnNumber: num),
+            builder: (_) => ScoreDetailScreen(hymnNumber: num, hymnTitle: titlePart),
           ),
         );
       },

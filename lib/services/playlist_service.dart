@@ -11,7 +11,6 @@ class PlaylistService {
         .collection('users')
         .doc(uid)
         .collection('playlists')
-    // ✅ createdAt 대신 name 정렬 (serverTimestamp null 문제 방지)
         .orderBy('name')
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
@@ -21,47 +20,25 @@ class PlaylistService {
         'name': data['name'] ?? '(이름없음)',
         'count': data['songsCount'] ?? 0,
       };
+      print('📡 Listening playlists for user: $uid');
     }).toList());
   }
 
-  // ✅ 재생목록 추가
   Future<String> addPlaylist(String name) async {
     final col = _db.collection('users').doc(uid).collection('playlists');
 
-    // 중복 방지(동명이 하나라도 있으면 막기)
     final dup = await col.where('name', isEqualTo: name).limit(1).get();
-    if (dup.docs.isNotEmpty) {
-      throw StateError('DUPLICATE_PLAYLIST_NAME');
-    }
+    if (dup.docs.isNotEmpty) throw StateError('DUPLICATE_PLAYLIST_NAME');
 
     final docRef = await col.add({
       'name': name,
+      'songsCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
+    print('✅ [Firestore] Playlist created: ${docRef.id}');
     return docRef.id;
   }
 
-  // ✅ 재생목록 이름 변경
-  Future<void> renamePlaylist(String id, String newName) async {
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('playlists')
-        .doc(id)
-        .update({'name': newName});
-  }
-
-  // ✅ 재생목록 삭제
-  Future<void> deletePlaylist(String id) async {
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('playlists')
-        .doc(id)
-        .delete();
-  }
-
-  // ✅ 재생목록에 곡 추가
   Future<void> addSongToPlaylist(String playlistId, String hymnTitle) async {
     final playlistRef = _db
         .collection('users')
@@ -76,5 +53,23 @@ class PlaylistService {
       });
       txn.update(playlistRef, {'songsCount': FieldValue.increment(1)});
     });
+
+    print('🎵 [Firestore] Song added: $hymnTitle → playlist $playlistId');
+  }
+
+  Future<void> deletePlaylist(String id) async {
+    final ref = _db.collection('users').doc(uid).collection('playlists').doc(id);
+    await ref.delete();
+    print('🗑️ [Firestore] Playlist deleted: $id');
+  }
+
+  /// ✅ 재생목록 이름 변경
+  Future<void> renamePlaylist(String id, String newName) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('playlists')
+        .doc(id)
+        .update({'name': newName});
   }
 }

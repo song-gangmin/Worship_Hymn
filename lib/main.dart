@@ -4,6 +4,8 @@ import 'section1_screen.dart';
 import 'main_screen.dart';
 import 'constants/colors.dart';
 import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
+import 'dart:async';
+
 
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,17 +15,72 @@ import 'firebase_options.dart'; // FlutterFire CLI로 자동 생성된 파일
 
 
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  KakaoSdk.init(nativeAppKey: '964ca6284360a7db3f8400c26a5d4be9');
-  await GoogleSignIn.instance.initialize(
-      clientId: '800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4.apps.googleusercontent.com'
-  );
-  FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
+
+  // ✅ 중복 초기화 완벽 방지
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint('✅ Firebase initialized');
+    } else {
+      Firebase.app();
+      debugPrint('⚡ Firebase already initialized — using existing instance');
+    }
+  } on FirebaseException catch (e) {
+    if (e.code == 'duplicate-app') {
+      debugPrint('⚠️ Firebase already initialized — continuing...');
+    } else {
+      debugPrint('❌ Firebase init error: ${e.message}');
+      rethrow;
+    }
+  }
+
+  // ✅ Firestore 캐시 설정 (초기화 후)
+  FirebaseFirestore.instance.settings =
+  const Settings(persistenceEnabled: true);
+
+  // ✅ 테스트용 익명 로그인 (권한 문제 방지)
+  if (FirebaseAuth.instance.currentUser == null) {
+    await FirebaseAuth.instance.signInAnonymously();
+    debugPrint('👤 Signed in anonymously for test');
+  }
+
+  // ✅ Firestore 연결 테스트
+  await testFirestoreConnection();
 
   runApp(const MyApp());
+}
 
+Future<void> testFirestoreConnection() async {
+  debugPrint('🔥 testFirestoreConnection() start');
+  try {
+    final ref = await FirebaseFirestore.instance
+        .collection('test_connection')
+        .add({
+      'platform': 'ios',
+      'tsClient': Timestamp.now(),
+      'tsServer': FieldValue.serverTimestamp(),
+    })
+        .timeout(const Duration(seconds: 5));
+
+    final snap = await ref
+        .get(const GetOptions(source: Source.server));
+
+    debugPrint('✅ Firestore ok | doc=${ref.id} | serverTs=${snap.data()?['tsServer']}');
+  } on FirebaseException catch (e, st) {
+    debugPrint('❌ Firestore FirebaseException: ${e.code} - ${e.message}');
+    debugPrint(st.toString());
+  } on TimeoutException catch (_) {
+    debugPrint('⏱️ Firestore request timed out');
+  } catch (e, st) {
+    debugPrint('❌ Firestore unknown error: $e');
+    debugPrint(st.toString());
+  } finally {
+    debugPrint('🏁 testFirestoreConnection() end');
+  }
 }
 
 class MyApp extends StatelessWidget {
