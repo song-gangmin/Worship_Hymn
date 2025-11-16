@@ -37,6 +37,7 @@ Future<void> main() async {
       rethrow;
     }
   }
+  KakaoSdk.init(nativeAppKey: '964ca6284360a7db3f8400c26a5d4be9');
 
   // ✅ Firestore 캐시 설정 (초기화 후)
   FirebaseFirestore.instance.settings =
