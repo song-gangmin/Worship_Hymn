@@ -4,22 +4,57 @@ import '../constants/text_styles.dart';
 import 'section1_screen.dart';
 import 'auth/logout_helper.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SettingScreen extends StatelessWidget {
-  final String name;
-  final String email;
-
-  const SettingScreen({
-    super.key,
-    required this.name,
-    required this.email,
-  });
+  const SettingScreen({super.key,});
 
   @override
   Widget build(BuildContext context) {
-    // 전달받은 값이 있으면 로그인 상태
-    final bool signedIn = name.isNotEmpty && name != '로그인 하세요';
+    final user = FirebaseAuth.instance.currentUser;
 
+    if (user == null) {
+      // 로그인 안된 상태
+      return _buildScreen(
+        name: '로그인 하세요',
+        email: '이메일 정보 없음',
+        signedIn: false,
+        context: context,
+      );
+    }
+
+    // Firestore에서 users/{uid} 문서 실시간 읽기
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final data = snap.data!.data() ?? {};
+        final name = data['name'] ?? user.displayName ?? '';
+        final email = data['email'] ?? user.email ?? '';
+
+        return _buildScreen(
+          name: name,
+          email: email,
+          signedIn: true,
+          context: context,
+        );
+      },
+    );
+  }
+  @override
+  Widget _buildScreen({
+    required String name,
+    required String email,
+    required bool signedIn,
+    required BuildContext context,
+  }) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -31,7 +66,8 @@ class SettingScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─── 프로필 카드 ───
+
+          // ─── 기존 네 UI 100% 그대로 붙여넣기 ───
           Padding(
             padding: const EdgeInsets.all(14),
             child: Card(
@@ -54,8 +90,7 @@ class SettingScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          signedIn ? name : '로그인 하세요',
+                        Text(name,
                           style: const TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w600,
@@ -63,7 +98,7 @@ class SettingScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          signedIn ? email : '이메일 정보 없음',
+                          email,
                           style: const TextStyle(
                             fontSize: 15,
                             color: Colors.grey,
@@ -77,7 +112,6 @@ class SettingScreen extends StatelessWidget {
             ),
           ),
 
-          // ─── 메뉴 리스트 ─────────────────────
           Expanded(
             child: Container(
               color: AppColors.background,
@@ -90,10 +124,7 @@ class SettingScreen extends StatelessWidget {
                   _SettingItem(title: '문의', onTap: () {}),
                   const _SettingItem(
                     title: '버전',
-                    trailing: Text(
-                      '1.1.1',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
+                    trailing: Text('1.1.1', style: TextStyle(fontSize: 16, color: Colors.grey)),
                   ),
                   _SettingItem(
                     title: signedIn ? '로그아웃' : '로그인',
@@ -102,16 +133,12 @@ class SettingScreen extends StatelessWidget {
                       if (signedIn) {
                         await appLogout(context);
                       } else {
-                        // 로그인 → Section1Screen으로 이동
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Section1Screen(),
-                          ),
+                        Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const Section1Screen()),
                         );
                       }
                     },
-                  ),
+                  )
                 ],
               ),
             ),

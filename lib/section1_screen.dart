@@ -134,15 +134,7 @@ class Section1Screen extends StatelessWidget {
               _primaryCTA(
                 text: '로그인 없이 계속하기',
                 onTap: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => MainScreen(
-                        name: '로그인 하세요',
-                        email: '이메일 정보 없음',
-                      ),
-                    ),
-                    (_) => false,
-                  );
+                  Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => MainScreen(),), (_) => false);
                 },
               ),
 

@@ -95,31 +95,44 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (ctx, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Section0Screen(); // 로딩
+      home: FutureBuilder(
+        // 최소 1초 기다리기
+        future: Future.delayed(const Duration(seconds: 1)),
+        builder: (context, snapDelay) {
+          // 아직 1초가 안 지났으면 Section0Screen 유지
+          if (snapDelay.connectionState != ConnectionState.done) {
+            return const Section0Screen();
           }
-          final user = snap.data;
-          if (user == null) {
-            return const Section1Screen(); // 로그인 화면
-          }
-          // ✅ Firestore users/{uid} 문서를 구독
-          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .snapshots(),
-            builder: (context, snap2) {
-              if (!snap2.hasData) {
-                return const Section0Screen(); // 로딩 표시
+
+          // 1초 후 FirebaseAuth 상태 체크
+          return StreamBuilder<User?>(
+            stream: FirebaseAuth.instance.authStateChanges(),
+            builder: (ctx, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Section0Screen();
               }
-              final data = snap2.data?.data() ?? {};
-              return MainScreen(
-                name: data['name'] ?? user.displayName ?? '',   // ← 기본값 제거
-                email: data['email'] ?? user.email ?? '',       // ← 기본값 제거
-              );            },
+
+              final user = snap.data;
+              if (user == null) {
+                return const Section1Screen();
+              }
+
+              // Firestore 사용자 문서 로딩
+              return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .snapshots(),
+                builder: (context, snap2) {
+                  if (!snap2.hasData) {
+                    return const Section0Screen();
+                  }
+
+                  final data = snap2.data?.data() ?? {};
+                  return MainScreen();
+                },
+              );
+            },
           );
         },
       ),

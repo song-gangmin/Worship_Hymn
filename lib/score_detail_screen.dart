@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/playlist_service.dart';
 import 'bookmark_screen.dart';
+import 'main_screen.dart';
 import 'constants/text_styles.dart';
 import 'constants/colors.dart';
 import 'widget/playlist_dialog.dart';
@@ -11,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class ScoreDetailScreen extends StatefulWidget {
   final int hymnNumber;
   final String hymnTitle;
+
   const ScoreDetailScreen({
     super.key,
     required this.hymnNumber,
@@ -33,7 +35,10 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   late PlaylistService playlistService;
 
   String get _assetPath => 'assets/scores/page_$_current.png';
-  String get hymnTitle => widget.hymnTitle.isNotEmpty ? widget.hymnTitle : '$_current장';
+
+  String get hymnNumberLabel => '${_current}장';
+
+  String get hymnTitle => widget.hymnTitle;
 
   @override
   void initState() {
@@ -41,49 +46,63 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     _current = widget.hymnNumber.clamp(_minHymn, _maxHymn);
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    uid = currentUser?.uid ?? 'kakao:4424196142'; // ✅ 실제 Firestore UID와 맞추기
+    uid = currentUser?.uid ?? 'kakao:4424196142';
     playlistService = PlaylistService(uid: uid);
   }
 
   void _toggleFullscreen() => setState(() => _chromeVisible = !_chromeVisible);
 
-  // ✅ Firestore에 곡 추가 로직
-  Future<void> _addSongToPlaylist(String playlistId, String playlistName) async {
+  ///  🎵  곡을 선택한 재생목록 + 전체 재생목록에 추가하는 메인 로직
+  Future<void> _addSongSmart(String playlistId, String playlistName) async {
     try {
-      await playlistService.addSongToPlaylist(playlistId, hymnTitle);
-
-      // ✅ "전체" 재생목록도 함께 추가
-      final allList = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('playlists')
-          .where('name', isEqualTo: '전체')
-          .limit(1)
-          .get();
-      if (allList.docs.isNotEmpty && allList.docs.first.id != playlistId) {
-        await playlistService.addSongToPlaylist(allList.docs.first.id, hymnTitle);
-      }
+      await playlistService.addSongSmart(
+        playlistId: playlistId,
+        hymnNumber: _current,
+        title: hymnTitle,
+      );
 
       if (!mounted) return;
+
       setState(() => _isBookmarked = true);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"${playlistName}"에 곡이 추가되었습니다.'),
+          content: Text('"$playlistName"에 곡이 추가되었습니다.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.primary,
         ),
       );
 
-      // ✅ BookmarkScreen으로 이동 (그 재생목록 선택 상태로)
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => BookmarkScreen(initialPlaylistId: playlistId),
+          builder: (_) => MainScreen(
+            initialTabIndex: 2,
+            initialPlaylistId: playlistId,
+          ),
         ),
+            (route) => false,
       );
+    } on StateError catch (e) {
+      if (!mounted) return;
+      if (e.message == 'DUPLICATE_SONG_IN_PLAYLIST') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('이미 즐겨찾기에 포함되어 있습니다.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('곡 추가 실패: ${e.message}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
-      debugPrint('❌ 곡 추가 실패: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('곡 추가 중 오류가 발생했습니다.'),
@@ -94,7 +113,9 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     }
   }
 
-  /// ✅ 재생목록 목록 BottomSheet
+
+
+  /// 재생목록 선택 bottom sheet (전체는 선택지에서 제거)
   void _showBookmarkBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -111,12 +132,10 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
               );
             }
 
-            final playlists = snapshot.data!;
-            playlists.sort((a, b) {
-              if (a['name'] == '전체') return -1;
-              if (b['name'] == '전체') return 1;
-              return a['name'].compareTo(b['name']);
-            });
+            // "전체" 제거
+            final playlists = snapshot.data!
+                .where((p) => p['name'] != '전체')
+                .toList();
 
             return FractionallySizedBox(
               heightFactor: 0.6,
@@ -151,12 +170,12 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                           ),
                           const SizedBox(height: 8),
 
-                          // ✅ 재생목록 리스트
                           Flexible(
                             child: ListView.builder(
                               itemCount: playlists.length,
                               itemBuilder: (_, i) {
                                 final p = playlists[i];
+
                                 return ListTile(
                                   dense: true,
                                   title: Text(
@@ -172,19 +191,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                                   ),
                                   onTap: () async {
                                     Navigator.pop(context);
-
-                                    // ✅ 이미 존재하는 재생목록: 이동 없이 메시지만
-                                    await playlistService.addSongToPlaylist(p['id'], hymnTitle);
-                                    setState(() => _isBookmarked = true);
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('"${p['name']}"에 곡이 추가되었습니다.'),
-                                        behavior: SnackBarBehavior.floating,
-                                        backgroundColor: AppColors.primary,
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
+                                    await _addSongSmart(p['id'], p['name']);
                                   },
                                 );
                               },
@@ -194,7 +201,6 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                       ),
                     ),
 
-                    // ✅ 오른쪽 하단 새 재생목록 버튼
                     Align(
                       alignment: Alignment.bottomRight,
                       child: Padding(
@@ -202,7 +208,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                         child: GestureDetector(
                           onTap: () {
                             Navigator.pop(context);
-                            _showCreatePlaylistDialog(context); // 👈 새 재생목록은 이동 포함
+                            _showCreatePlaylistDialog(context);
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -245,8 +251,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     );
   }
 
-
-  /// ✅ 새 재생목록 생성
+  ///  🔧 새 재생목록 생성
   void _showCreatePlaylistDialog(BuildContext context) {
     final controller = TextEditingController();
 
@@ -260,31 +265,11 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
           final name = controller.text.trim();
           if (name.isEmpty) return;
 
-          Navigator.pop(ctx); // 다이얼로그 닫기
+          Navigator.pop(ctx);
 
           try {
             final newId = await playlistService.addPlaylist(name);
-            await playlistService.addSongToPlaylist(newId, hymnTitle);
-            setState(() => _isBookmarked = true);
-
-            // ✅ 다이얼로그 닫은 뒤에는 microtask로 다음 frame에서 pushReplacement 실행
-            Future.microtask(() {
-              if (!mounted) return;
-              Navigator.pushReplacement(
-                this.context, // ⚠️ ctx가 아닌! ScoreDetailScreen의 context 사용
-                MaterialPageRoute(
-                  builder: (_) => BookmarkScreen(initialPlaylistId: newId),
-                ),
-              );
-            });
-
-            ScaffoldMessenger.of(this.context).showSnackBar(
-              SnackBar(
-                content: Text('"$name" 재생목록이 생성되고 곡이 추가되었습니다.'),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: AppColors.primary,
-              ),
-            );
+            await _addSongSmart(newId, name);
           } on StateError catch (e) {
             if (e.message == 'DUPLICATE_PLAYLIST_NAME') {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -302,6 +287,8 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     );
   }
 
+
+  /// UI
   @override
   Widget build(BuildContext context) {
     final appBar = _chromeVisible
@@ -309,7 +296,8 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
       backgroundColor: Colors.white,
       elevation: 0.5,
       centerTitle: true,
-      title: Text(hymnTitle, style: AppTextStyles.sectionTitle),
+      // 🔹 제목: "302장" 형식
+      title: Text(hymnNumberLabel, style: AppTextStyles.sectionTitle),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new),
         onPressed: () => Navigator.pop(context),

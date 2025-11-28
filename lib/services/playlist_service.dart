@@ -2,132 +2,230 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PlaylistService {
   final String uid;
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
 
-  PlaylistService({required this.uid});
+  static const String allPlaylistId = '전체';
 
-  /// 🔹 모든 재생목록 실시간 스트림
-  Stream<List<Map<String, dynamic>>> getPlaylists() {
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('playlists')
-        .orderBy('name')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-      final data = doc.data();
-      return {
-        'id': doc.id,
-        'name': data['name'] ?? '(이름없음)',
-        'count': data['songsCount'] ?? 0,
-      };
-    }).toList());
+  PlaylistService({required this.uid}) : _db = FirebaseFirestore.instance;
+
+  DocumentReference<Map<String, dynamic>> get _userRef =>
+      _db.collection('users').doc(uid);
+
+  CollectionReference<Map<String, dynamic>> get _playlistsCol =>
+      _userRef.collection('playlists');
+
+  /// 각 유저마다 기본 재생목록 "전체" 보장 (id = '전체')
+  Future<void> ensureDefaultPlaylist() async {
+    final defaultRef = _playlistsCol.doc(allPlaylistId);
+    final snap = await defaultRef.get();
+
+    if (!snap.exists) {
+      await defaultRef.set({
+        'name': allPlaylistId,
+        'songsCount': 0,
+        'default': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
-  /// 🔹 재생목록 추가 (문서 ID = 이름)
-  Future<String> addPlaylist(String name) async {
-    final col = _db.collection('users').doc(uid).collection('playlists');
+  /// 모든 재생목록 실시간 스트림
+  Stream<List<Map<String, dynamic>>> getPlaylists() {
+    return _playlistsCol.orderBy('name').snapshots().map(
+          (snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data(); // Map<String, dynamic>
+          return {
+            'id': doc.id,
+            'name': data['name'] ?? '(이름없음)',
+            'count': data['songsCount'] ?? 0,
+          };
+        }).toList();
+      },
+    );
+  }
 
-    // 🔸 Firestore에서 ID로 쓸 수 없는 문자 제거
+  /// 재생목록 추가 (문서 ID = 이름을 안전하게 변환한 값)
+  Future<String> addPlaylist(String name) async {
     final safeName = name.replaceAll(RegExp(r'[\/.#$[\]]'), '_');
 
-    // 🔸 중복 방지
-    final dup = await col.doc(safeName).get();
-    if (dup.exists) throw StateError('DUPLICATE_PLAYLIST_NAME');
+    final docRef = _playlistsCol.doc(safeName);
+    final exists = await docRef.get();
+    if (exists.exists) {
+      throw StateError('DUPLICATE_PLAYLIST_NAME');
+    }
 
-    // 🔹 문서 ID = 이름으로 생성
-    await col.doc(safeName).set({
+    await docRef.set({
       'name': name,
       'songsCount': 0,
+      'default': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
+
     return safeName;
   }
 
-  /// 🔹 곡 추가 (문서 ID = 찬양 제목)
-  Future<void> addSongToPlaylist(String playlistName, String hymnTitle) async {
-    final playlistRef = _db
-        .collection('users')
-        .doc(uid)
-        .collection('playlists')
-        .doc(playlistName);
+  /// 특정 재생목록에 곡 추가 + "전체" 자동 반영
+  /// 같은 재생목록에 동일 곡이 이미 있으면 StateError('DUPLICATE_SONG_IN_PLAYLIST') 던짐
+  Future<void> addSongSmart({
+    required String playlistId,
+    required int hymnNumber,
+    required String title,
+  }) async {
+    final songId = hymnNumber.toString();
 
-    // 🔸 Firestore에 안전한 ID로 변환
-    final safeTitle = hymnTitle.replaceAll(RegExp(r'[\/.#$[\]]'), '_');
-    final songDoc = playlistRef.collection('songs').doc(safeTitle);
-
-    // 🔸 중복 방지
-    final existing = await songDoc.get();
-    if (existing.exists) {
-      print('⚠️ [Firestore] Song already exists: $hymnTitle');
-      return;
-    }
+    // 1) 선택한 재생목록에 추가
+    final playlistRef = _playlistsCol.doc(playlistId);
+    final songRef = playlistRef.collection('songs').doc(songId);
 
     await _db.runTransaction((txn) async {
-      await songDoc.set({
-        'title': hymnTitle,
+      final songSnap = await txn.get(songRef);
+      if (songSnap.exists) {
+        throw StateError('DUPLICATE_SONG_IN_PLAYLIST');
+      }
+
+      txn.set(songRef, {
+        'number': hymnNumber,
+        'title': title,
         'addedAt': FieldValue.serverTimestamp(),
       });
-      txn.update(playlistRef, {'songsCount': FieldValue.increment(1)});
+
+      txn.update(
+        playlistRef,
+        {'songsCount': FieldValue.increment(1)},
+      );
     });
+
+    // 2) "전체" 재생목록에도 자동 추가 (이미 있으면 무시)
+    if (playlistId != allPlaylistId) {
+      final allRef = _playlistsCol.doc(allPlaylistId);
+      final allSongRef = allRef.collection('songs').doc(songId);
+
+      await _db.runTransaction((txn) async {
+        final snap = await txn.get(allSongRef);
+        if (snap.exists) {
+          return; // 이미 전체에 있으면 아무것도 안 함
+        }
+
+        txn.set(allSongRef, {
+          'number': hymnNumber,
+          'title': title,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+
+        txn.update(
+          allRef,
+          {'songsCount': FieldValue.increment(1)},
+        );
+      });
+    }
   }
 
-  /// 🔹 곡 삭제
-  Future<void> deleteSong(String playlistName, String hymnTitle) async {
-    final safeTitle = hymnTitle.replaceAll(RegExp(r'[\/.#$[\]]'), '_');
-    final playlistRef = _db
-        .collection('users')
-        .doc(uid)
-        .collection('playlists')
-        .doc(playlistName);
+  /// 단일 재생목록에서 곡 삭제 + 필요시 "전체"에서 정리
+  Future<void> deleteSongFromPlaylist({
+    required String playlistId,
+    required int hymnNumber,
+  }) async {
+    final playlistRef = _playlistsCol.doc(playlistId);
+    final songsCol = playlistRef.collection('songs');
 
+    // 🔹 1) 해당 재생목록에서 number로 찾아서 모두 삭제
     await _db.runTransaction((txn) async {
-      await playlistRef.collection('songs').doc(safeTitle).delete();
-      txn.update(playlistRef, {'songsCount': FieldValue.increment(-1)});
-    });
-  }
+      final querySnap =
+      await songsCol.where('number', isEqualTo: hymnNumber).get();
 
-  /// 🔹 재생목록 이름 변경 (문서 이동)
-  Future<void> renamePlaylist(String oldName, String newName) async {
-    final userRef = _db.collection('users').doc(uid);
-    final playlists = userRef.collection('playlists');
+      if (querySnap.docs.isEmpty) return;
 
-    final oldRef = playlists.doc(oldName);
-    final newRef = playlists.doc(newName);
+      for (final doc in querySnap.docs) {
+        txn.delete(doc.reference);
+      }
 
-    final oldDoc = await oldRef.get();
-    if (!oldDoc.exists) {
-      print('⚠️ [Firestore] Old playlist not found: $oldName');
-      return;
-    }
-
-    // 🔸 새 문서 생성 (이름 변경)
-    await newRef.set({
-      ...oldDoc.data()!,
-      'name': newName,
-      'updatedAt': FieldValue.serverTimestamp(),
+      txn.update(
+        playlistRef,
+        {'songsCount': FieldValue.increment(-querySnap.docs.length)},
+      );
     });
 
-    // 🔸 songs 하위 컬렉션 복사
-    final songs = await oldRef.collection('songs').get();
-    for (final s in songs.docs) {
-      await newRef.collection('songs').doc(s.id).set(s.data());
+    // 🔹 2) "전체" 재생목록 정리
+    if (playlistId != allPlaylistId) {
+      await _updateAllPlaylistAfterSongChange(hymnNumber);
     }
-
-    // 🔸 이전 문서 삭제
-    await oldRef.delete();
   }
 
-  /// 🔹 재생목록 삭제 (songs 포함)
-  Future<void> deletePlaylist(String name) async {
-    final playlistRef =
-    _db.collection('users').doc(uid).collection('playlists').doc(name);
+  /// 어떤 재생목록에서든 곡이 추가/삭제된 뒤
+  /// 그 곡이 더 이상 어떤 재생목록에도 없으면 "전체"에서도 삭제
+  Future<void> _updateAllPlaylistAfterSongChange(int hymnNumber) async {
+    // 1) 다른 플레이리스트들에 이 곡이 아직 남아 있는지 확인
+    final allPlaylistsSnap = await _playlistsCol.get();
+    bool existsSomewhereElse = false;
 
-    final songs = await playlistRef.collection('songs').get();
-    for (final s in songs.docs) {
-      await s.reference.delete();
+    for (final doc in allPlaylistsSnap.docs) {
+      if (doc.id == allPlaylistId) continue;
+
+      final songsCol = doc.reference.collection('songs');
+      final q = await songsCol
+          .where('number', isEqualTo: hymnNumber)
+          .limit(1)
+          .get();
+
+      if (q.docs.isNotEmpty) {
+        existsSomewhereElse = true;
+        break;
+      }
     }
 
+    // 2) 아무 데도 없으면 "전체"에서 삭제
+    if (!existsSomewhereElse) {
+      final allRef = _playlistsCol.doc(allPlaylistId);
+      final songsCol = allRef.collection('songs');
+
+      await _db.runTransaction((txn) async {
+        final q = await songsCol
+            .where('number', isEqualTo: hymnNumber)
+            .get();
+
+        if (q.docs.isEmpty) return;
+
+        for (final doc in q.docs) {
+          txn.delete(doc.reference);
+        }
+
+        txn.update(
+          allRef,
+          {'songsCount': FieldValue.increment(-q.docs.length)},
+        );
+      });
+    }
+  }
+
+  /// 재생목록 삭제 (안의 곡들 + 전체에서의 정리까지)
+  Future<void> deletePlaylist(String id) async {
+    if (id == allPlaylistId) {
+      // "전체"는 삭제 불가
+      throw StateError('CANNOT_DELETE_ALL_PLAYLIST');
+    }
+
+    final playlistRef = _playlistsCol.doc(id);
+    final songsSnap = await playlistRef.collection('songs').get();
+
+    // 곡들 하나씩 삭제 (전체 재생목록 정리 포함)
+    for (final doc in songsSnap.docs) {
+      final data = doc.data();
+      final number = (data['number'] ?? 0) as int;
+      await deleteSongFromPlaylist(
+        playlistId: id,
+        hymnNumber: number,
+      );
+    }
+
+    // 마지막으로 재생목록 자체 삭제
     await playlistRef.delete();
+  }
+
+  Future<void> renamePlaylist(String id, String newName) async {
+    if (id == allPlaylistId) {
+      throw StateError('CANNOT_RENAME_ALL_PLAYLIST');
+    }
+    await _playlistsCol.doc(id).update({'name': newName});
   }
 }

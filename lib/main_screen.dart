@@ -4,17 +4,18 @@ import 'home_screen.dart';
 import 'score_screen.dart';
 import 'bookmark_screen.dart';
 import 'setting_screen.dart';
+import 'score_detail_screen.dart';
 import 'constants/colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class MainScreen extends StatefulWidget {
-  final String? name;
-  final String? email;
+  final int initialTabIndex;
+  final String? initialPlaylistId;
 
   const MainScreen({
     Key? key,
-    this.name,
-    this.email,
+    this.initialTabIndex = 0,
+    this.initialPlaylistId,
   }) : super(key: key);
 
   static _MainScreenState? of(BuildContext ctx) =>
@@ -29,9 +30,6 @@ class _MainScreenState extends State<MainScreen> {
 
   // 🔸 BookmarkScreen 제어용 키
   final GlobalKey<BookmarkScreenState> _bookmarkKey = GlobalKey<BookmarkScreenState>();
-
-  void goToTab(int index) => setState(() => _selectedIndex = index);
-
   final GlobalKey<ScoreScreenState> scoreKey = GlobalKey<ScoreScreenState>();
 
   late final List<Widget> _screens;
@@ -39,6 +37,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+
+    // 🔥 ScoreDetailScreen에서 설정한 탭으로 바로 이동하도록
+    _selectedIndex = widget.initialTabIndex;
+
     _screens = [
       const HomeScreen(),
       ScoreScreen(
@@ -47,18 +49,20 @@ class _MainScreenState extends State<MainScreen> {
         hymnNumbers: List.generate(588, (i) => i + 1),
         grouped: true,
       ),
-      // ✅ BookmarkScreen에 콜백 전달
+
+      // 🔥 BookmarkScreen에 초기 playlistId도 전달
       BookmarkScreen(
-        key: _bookmarkKey,
+        key: UniqueKey(),
         onSelectionChanged: (_) {},
         onGoToTab: goToTab,
+        initialPlaylistId: widget.initialPlaylistId,
       ),
-      SettingScreen(
-        name: widget.name ?? '',
-        email: widget.email ?? '',
-      ),
+
+      const SettingScreen(),
     ];
   }
+
+  void goToTab(int index) => setState(() => _selectedIndex = index);
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
