@@ -7,6 +7,23 @@ const axios = require("axios");
 // Firebase Admin 초기화
 admin.initializeApp();
 
+exports.resetWeeklyCounts = functions
+  .pubsub.schedule("0 0 * * 1") // 🔥 매주 월요일 00:00
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    const statsRef = admin.firestore().collection("global_stats");
+    const snapshots = await statsRef.get();
+
+    const batch = admin.firestore().batch();
+
+    snapshots.forEach((doc) => {
+      batch.update(doc.ref, { weeklyCount: 0 });
+    });
+
+    await batch.commit();
+    console.log("Weekly counts reset completed");
+  });
+
 // 전역 옵션(리전/타임아웃/메모리 등)
 setGlobalOptions({
   region: "asia-northeast3", // 서울 리전

@@ -94,6 +94,7 @@ flutter:
     - assets/icon/score.svg
     - assets/icon/bookmark.svg
     - assets/icon/setting.svg
+    - assets/icon/music.svg
     - assets/scores/
 
   # The following line ensures that the Material Icons font is

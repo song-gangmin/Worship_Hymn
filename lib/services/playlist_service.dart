@@ -14,7 +14,7 @@ class PlaylistService {
   CollectionReference<Map<String, dynamic>> get _playlistsCol =>
       _userRef.collection('playlists');
 
-  /// 각 유저마다 기본 재생목록 "전체" 보장 (id = '전체')
+  /// 각 유저마다 기본 즐겨찾기 "전체" 보장 (id = '전체')
   Future<void> ensureDefaultPlaylist() async {
     final defaultRef = _playlistsCol.doc(allPlaylistId);
     final snap = await defaultRef.get();
@@ -29,7 +29,7 @@ class PlaylistService {
     }
   }
 
-  /// 모든 재생목록 실시간 스트림
+  /// 모든 즐겨찾기 실시간 스트림
   Stream<List<Map<String, dynamic>>> getPlaylists() {
     return _playlistsCol.orderBy('name').snapshots().map(
           (snapshot) {
@@ -45,7 +45,7 @@ class PlaylistService {
     );
   }
 
-  /// 재생목록 추가 (문서 ID = 이름을 안전하게 변환한 값)
+  /// 즐겨찾기 추가 (문서 ID = 이름을 안전하게 변환한 값)
   Future<String> addPlaylist(String name) async {
     final safeName = name.replaceAll(RegExp(r'[\/.#$[\]]'), '_');
 
@@ -65,8 +65,8 @@ class PlaylistService {
     return safeName;
   }
 
-  /// 특정 재생목록에 곡 추가 + "전체" 자동 반영
-  /// 같은 재생목록에 동일 곡이 이미 있으면 StateError('DUPLICATE_SONG_IN_PLAYLIST') 던짐
+  /// 특정 즐겨찾기에 곡 추가 + "전체" 자동 반영
+  /// 같은 즐겨찾기에 동일 곡이 이미 있으면 StateError('DUPLICATE_SONG_IN_PLAYLIST') 던짐
   Future<void> addSongSmart({
     required String playlistId,
     required int hymnNumber,
@@ -74,7 +74,7 @@ class PlaylistService {
   }) async {
     final songId = hymnNumber.toString();
 
-    // 1) 선택한 재생목록에 추가
+    // 1) 선택한 즐겨찾기에 추가
     final playlistRef = _playlistsCol.doc(playlistId);
     final songRef = playlistRef.collection('songs').doc(songId);
 
@@ -96,7 +96,7 @@ class PlaylistService {
       );
     });
 
-    // 2) "전체" 재생목록에도 자동 추가 (이미 있으면 무시)
+    // 2) "전체" 즐겨찾기에도 자동 추가 (이미 있으면 무시)
     if (playlistId != allPlaylistId) {
       final allRef = _playlistsCol.doc(allPlaylistId);
       final allSongRef = allRef.collection('songs').doc(songId);
@@ -121,7 +121,7 @@ class PlaylistService {
     }
   }
 
-  /// 단일 재생목록에서 곡 삭제 + 필요시 "전체"에서 정리
+  /// 단일 즐겨찾기에서 곡 삭제 + 필요시 "전체"에서 정리
   Future<void> deleteSongFromPlaylist({
     required String playlistId,
     required int hymnNumber,
@@ -129,7 +129,7 @@ class PlaylistService {
     final playlistRef = _playlistsCol.doc(playlistId);
     final songsCol = playlistRef.collection('songs');
 
-    // 🔹 1) 해당 재생목록에서 number로 찾아서 모두 삭제
+    // 🔹 1) 해당 즐겨찾기에서 number로 찾아서 모두 삭제
     await _db.runTransaction((txn) async {
       final querySnap =
       await songsCol.where('number', isEqualTo: hymnNumber).get();
@@ -146,16 +146,16 @@ class PlaylistService {
       );
     });
 
-    // 🔹 2) "전체" 재생목록 정리
+    // 🔹 2) "전체" 즐겨찾기 정리
     if (playlistId != allPlaylistId) {
       await _updateAllPlaylistAfterSongChange(hymnNumber);
     }
   }
 
-  /// 어떤 재생목록에서든 곡이 추가/삭제된 뒤
-  /// 그 곡이 더 이상 어떤 재생목록에도 없으면 "전체"에서도 삭제
+  /// 어떤 즐겨찾기에서든 곡이 추가/삭제된 뒤
+  /// 그 곡이 더 이상 어떤 즐겨찾기에도 없으면 "전체"에서도 삭제
   Future<void> _updateAllPlaylistAfterSongChange(int hymnNumber) async {
-    // 1) 다른 플레이리스트들에 이 곡이 아직 남아 있는지 확인
+    // 1) 다른 즐겨찾기에 이 곡이 아직 남아 있는지 확인
     final allPlaylistsSnap = await _playlistsCol.get();
     bool existsSomewhereElse = false;
 
@@ -198,7 +198,7 @@ class PlaylistService {
     }
   }
 
-  /// 재생목록 삭제 (안의 곡들 + 전체에서의 정리까지)
+  /// 즐겨찾기 삭제 (안의 곡들 + 전체에서의 정리까지)
   Future<void> deletePlaylist(String id) async {
     if (id == allPlaylistId) {
       // "전체"는 삭제 불가
@@ -208,7 +208,7 @@ class PlaylistService {
     final playlistRef = _playlistsCol.doc(id);
     final songsSnap = await playlistRef.collection('songs').get();
 
-    // 곡들 하나씩 삭제 (전체 재생목록 정리 포함)
+    // 곡들 하나씩 삭제 (전체 즐겨찾기 정리 포함)
     for (final doc in songsSnap.docs) {
       final data = doc.data();
       final number = (data['number'] ?? 0) as int;
@@ -217,8 +217,7 @@ class PlaylistService {
         hymnNumber: number,
       );
     }
-
-    // 마지막으로 재생목록 자체 삭제
+    // 마지막으로 즐겨찾기  자체 삭제
     await playlistRef.delete();
   }
 

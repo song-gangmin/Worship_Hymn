@@ -97,7 +97,7 @@ class ScoreScreenState extends State<ScoreScreen> {
   }
 
   Widget _buildSearchBar() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+    padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
     child: TextField(
       controller: _searchController,
       onChanged: (v) => setState(() => _query = v.trim()),

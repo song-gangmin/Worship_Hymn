@@ -14,7 +14,7 @@ class BookmarkScreen extends StatefulWidget {
     super.key,
     this.onSelectionChanged, // ✅ MainScreen 오버레이 트리거 콜백
     this.onGoToTab,          // ✅ 탭 이동 콜백
-    this.initialPlaylistId,  // ✅ 처음에 열 재생목록 ID
+    this.initialPlaylistId,  // ✅ 처음에 열 즐겨찾기 ID
   });
 
   final ValueChanged<bool>? onSelectionChanged;
@@ -52,7 +52,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
     playlistService = PlaylistService(uid: uid);
 
-    // 🔹 유저별 "전체" 재생목록 보장
+    // 🔹 유저별 "전체" 즐겨찾기 보장
     playlistService.ensureDefaultPlaylist();
   }
 
@@ -77,7 +77,13 @@ class BookmarkScreenState extends State<BookmarkScreen> {
             ? IconButton(
           icon: const Icon(Icons.arrow_back_ios_new,
               size: 20, color: Colors.black),
-          onPressed: _showDiscardChangesDialog,
+          onPressed: () {
+            setState(() {
+              isEditing = false;
+              selectedItems.clear();
+            });
+            _notifySelection();
+          },
         )
             : null,
         title: isEditing
@@ -92,7 +98,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
               padding: const EdgeInsets.only(left: 10, right: 0),
               child: IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.black87),
-                tooltip: '재생목록 삭제',
+                tooltip: '즐겨찾기 삭제',
                 onPressed: () {
                   final id = editingPlaylists[selectedPlaylistIndex]['id'];
                   final name = editingPlaylists[selectedPlaylistIndex]['name'];
@@ -156,7 +162,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
   // ---------------- Normal mode ----------------
   Widget _buildNormalMode() {
-    // 재생목록 자체를 Firestore에서 직접 보고 판단
+    // 즐겨찾기 자체를 Firestore에서 직접 보고 판단
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: playlistService.getPlaylists(),
       builder: (context, snapshot) {
@@ -164,7 +170,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // Firestore에서 가져온 재생목록들
+        // Firestore에서 가져온 즐겨찾기들
         final playlists = List<Map<String, dynamic>>.from(snapshot.data!);
 
         // "전체"를 항상 맨 앞으로
@@ -174,9 +180,9 @@ class BookmarkScreenState extends State<BookmarkScreen> {
           return (a['name'] as String).compareTo(b['name'] as String);
         });
 
-        // 진짜로 재생목록이 하나도 없을 때만 이 문구
+        // 진짜로 즐겨찾기가 하나도 없을 때만 이 문구
         if (playlists.isEmpty) {
-          return const Center(child: Text('재생목록이 없습니다.'));
+          return const Center(child: Text('즐겨찾기가 없습니다.'));
         }
 
         // ScoreDetailScreen 에서 넘어온 initialPlaylistId 처리 (처음 한 번만)
@@ -197,7 +203,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
         final selectedPlaylist = playlists[selectedPlaylistIndex];
         final selectedPlaylistId = selectedPlaylist['id'] as String;
 
-        // 선택된 재생목록의 곡들 가져오기
+        // 선택된 즐겨찾기의 곡들 가져오기
         final songCollection = FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
@@ -270,7 +276,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   Widget _buildEditMode() {
     if (editingPlaylists.isEmpty ||
         selectedPlaylistIndex >= editingPlaylists.length) {
-      return const Center(child: Text('재생목록이 없습니다.'));
+      return const Center(child: Text('즐겨찾기가 없습니다.'));
     }
 
     final playlistId = editingPlaylists[selectedPlaylistIndex]['id'] as String;
@@ -601,7 +607,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
     showDialog(
       context: context,
       builder: (ctx) => PlaylistDialog(
-        title: '새 재생목록',
+        title: '새 즐겨찾기',
         confirmText: '추가',
         controller: controller,
         showTextField: true,
@@ -615,7 +621,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('"$name" 재생목록이 추가되었습니다.'),
+              content: Text('"$name" 즐겨찾기가 추가되었습니다.'),
               behavior: SnackBarBehavior.floating,
               backgroundColor: AppColors.primary,
             ),
@@ -630,7 +636,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
     showDialog(
       context: context,
       builder: (ctx) => PlaylistDialog(
-        title: '재생목록 이름 수정',
+        title: '즐겨찾기 이름 수정',
         confirmText: '저장',
         controller: c,
         showTextField: true,
@@ -656,7 +662,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('재생목록 이름이 변경되었습니다.'),
+              content: Text('즐겨찾기 제목이 변경되었습니다.'),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -665,42 +671,12 @@ class BookmarkScreenState extends State<BookmarkScreen> {
     );
   }
 
-  Future<void> _showDiscardChangesDialog() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => PlaylistDialog(
-        title: '변경사항을 취소할까요?',
-        confirmText: '예',
-        controller: TextEditingController(),
-        showTextField: false,
-        onConfirm: () {
-          Navigator.pop(ctx, true);
-        },
-      ),
-    );
-
-    if (confirmed == true) {
-      setState(() {
-        isEditing = false;
-        editingPlaylists =
-        List<Map<String, dynamic>>.from(originalPlaylists);
-      });
-      _clearSelectionAndNotify();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('변경사항이 취소되었습니다.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
 
   Future<void> _showDeletePlaylistDialog(String id, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => PlaylistDialog(
-        title: '재생목록을 삭제할까요?',
+        title: '즐겨찾기를 삭제할까요?',
         confirmText: '삭제',
         controller: TextEditingController(),
         showTextField: false,
@@ -723,7 +699,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"$name" 재생목록이 삭제되었습니다.'),
+          content: Text('"$name" 즐겨찾기가 삭제되었습니다.'),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
         ),
