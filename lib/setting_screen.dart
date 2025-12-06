@@ -17,13 +17,14 @@ class SettingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final isGuest = (user == null) || (user.isAnonymous);
 
-    if (user == null) {
-      // 로그인 안된 상태
+    // 🔹 게스트(익명)인 경우: 스트림 안 타고 바로 "로그인 하세요" UI
+    if (isGuest) {
       return _buildScreen(
         name: '로그인 하세요',
         email: '이메일 정보 없음',
-        signedIn: false,
+        signedIn: false, // 🔥 로그인 안 된 상태로 취급
         context: context,
       );
     }

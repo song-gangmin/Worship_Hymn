@@ -221,6 +221,11 @@ Future<void> handleSignIn({
       await UserRepository().upsertUser(user);
     } catch (e) {
     }
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const MainScreen()),
+          (_) => false,
+    );
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

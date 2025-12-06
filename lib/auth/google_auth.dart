@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../UserRepository.dart';
 import '../auth/resualt_auth.dart';
+import '../services/user_data_migrator.dart';
 
 class GoogleAuth implements AuthService {
   @override
@@ -43,12 +44,26 @@ class GoogleAuth implements AuthService {
     jsonDecode(resp.body)['firebaseToken'] as String;
 
     // Firebase 로그인
+// 🔥 1) 현재 유저(익명일 수 있음) 보관
+    final authInstance = fb.FirebaseAuth.instance;
+    final prevUser = authInstance.currentUser;
+    final String? anonUid =
+    (prevUser != null && prevUser.isAnonymous) ? prevUser.uid : null;
+
+    // 2) Firebase 로그인
     debugPrint("[GoogleAuth] signing in with custom token...");
-    final fbUserCred = await fb.FirebaseAuth.instance
-        .signInWithCustomToken(firebaseCustomToken);
+    final fbUserCred =
+    await authInstance.signInWithCustomToken(firebaseCustomToken);
     debugPrint("[GoogleAuth] firebase login success: ${fbUserCred.user}");
     final fb.User firebaseUser = fbUserCred.user!;
 
+    // 🔥 3) 익명 → 새 계정으로 데이터 마이그레이션
+    if (anonUid != null && anonUid != firebaseUser.uid) {
+      await UserDataMigrator().migrateAnonymousData(
+        fromUid: anonUid,
+        toUid: firebaseUser.uid,
+      );
+    }
     // ✅ AuthUser 생성 (uid는 Firebase, 나머지는 GoogleSignIn에서)
     final authUser = AuthUser(
       uid: firebaseUser.uid,

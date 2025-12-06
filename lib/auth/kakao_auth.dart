@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:kakao_flutter_sdk_auth/kakao_flutter_sdk_auth.dart';
 
+import '../services/user_data_migrator.dart';
 import '../UserRepository.dart';
 import '../auth/resualt_auth.dart';
 
@@ -34,17 +35,31 @@ class KakaoAuth implements AuthService {
     }
     final firebaseCustomToken = jsonDecode(resp.body)['firebaseToken'] as String;
 
-    // 3) Firebase 로그인
+    // 🔥 1) 기존(익명) 유저 보관
+    final authInstance = fb.FirebaseAuth.instance;
+    final prevUser = authInstance.currentUser;
+    final String? anonUid =
+    (prevUser != null && prevUser.isAnonymous) ? prevUser.uid : null;
+
+    // 2) Firebase 로그인
     final fbUserCred =
-    await fb.FirebaseAuth.instance.signInWithCustomToken(firebaseCustomToken);
+    await authInstance.signInWithCustomToken(firebaseCustomToken);
     final fb.User firebaseUser = fbUserCred.user!;
+
+    // 🔥 3) 익명 데이터 → 새 계정으로 마이그레이션
+    if (anonUid != null && anonUid != firebaseUser.uid) {
+      await UserDataMigrator().migrateAnonymousData(
+        fromUid: anonUid,
+        toUid: firebaseUser.uid,
+      );
+    }
 
     final kakaoUser = await UserApi.instance.me();
     final account = kakaoUser.kakaoAccount;
 
     // 4) 변환
     final authUser = AuthUser(
-      uid: 'kakao:${kakaoUser.id}',
+      uid: firebaseUser.uid,
       provider: AuthProvider.kakao,
       name: account?.profile?.nickname ?? '이름 없음',
       email: account?.email ?? '이메일 없음',

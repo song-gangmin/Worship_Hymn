@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/playlist_service.dart';
 import 'main_screen.dart';
@@ -8,6 +7,7 @@ import 'constants/colors.dart';
 import 'widget/playlist_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'recent_service.dart';
+import 'package:photo_view/photo_view.dart';
 import 'global_stats_service.dart';
 
 class ScoreDetailScreen extends StatefulWidget {
@@ -25,10 +25,6 @@ class ScoreDetailScreen extends StatefulWidget {
 }
 
 class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
-  final TransformationController _controller = TransformationController();
-
-  bool _canPan = false; // 🔥 기본 상태: 드래그 불가
-
   static const int _minHymn = 1;
   static const int _maxHymn = 588;
 
@@ -45,8 +41,6 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   late PlaylistService playlistService;
   late RecentService recentService;
   late GlobalStatsService globalService;
-
-  late Offset _doubleTapPosition;
 
   String get _assetPath => 'assets/scores/page_$_current.png';
 
@@ -70,25 +64,6 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     _recordView();
 
     _recordUserRecent();
-
-    _controller.addListener(() {
-      final scale = _controller.value.getMaxScaleOnAxis();
-
-      // 🔥 확대 상태 → 드래그 가능
-      if (scale > 1.0 && !_canPan) {
-        setState(() {
-          _canPan = true;
-        });
-      }
-
-      // 🔥 다시 축소되어 1.0 이하 → 드래그 금지 + 원위치 복귀
-      if (scale <= 1.0 && _canPan) {
-        setState(() {
-          _canPan = false;
-          _resetPosition();
-        });
-      }
-    });
   }
 
   Future<void> _loadBookmarkState() async {
@@ -130,43 +105,34 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
   Future<void> _removeFromDefaultBookmark() async {
     try {
-      // 혹시 아직 못 가져왔으면 한 번 더 시도
-      if (_defaultPlaylistId == null) {
-        await _loadBookmarkState();
-        if (_defaultPlaylistId == null) return;
-      }
-
-      final songsRef = FirebaseFirestore.instance
+      final playlistsRef = FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .collection('playlists')
-          .doc(_defaultPlaylistId)
-          .collection('songs');
+          .collection('playlists');
 
-      final snap =
-      await songsRef.where('number', isEqualTo: _current).get();
+      // 1) 유저의 모든 플레이리스트 가져오기
+      final playlistsSnap = await playlistsRef.get();
 
-      if (snap.docs.isEmpty) {
-        if (mounted) {
-          setState(() => _isBookmarked = false);
+      for (final plDoc in playlistsSnap.docs) {
+        final songsRef = plDoc.reference.collection('songs');
+
+        // 2) 이 플레이리스트 안에서 현재 곡(_current) 찾아서
+        final toDeleteSnap =
+        await songsRef.where('number', isEqualTo: _current).get();
+
+        if (toDeleteSnap.docs.isEmpty) continue;
+
+        // 3) 곡 문서 삭제
+        for (final songDoc in toDeleteSnap.docs) {
+          await songDoc.reference.delete();
         }
-        return;
-      }
 
-      // 곡 삭제
-      for (final doc in snap.docs) {
-        await doc.reference.delete();
+        // 4) 남아 있는 곡 개수 다시 세서 count에 정확히 반영
+        final afterSnap = await songsRef.get();
+        await plDoc.reference.update({
+          'count': afterSnap.size,
+        });
       }
-
-      // count 필드도 줄여주기
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('playlists')
-          .doc(_defaultPlaylistId)
-          .update({
-        'count': FieldValue.increment(-snap.docs.length),
-      });
 
       if (!mounted) return;
 
@@ -189,6 +155,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
       );
     }
   }
+
   Future<void> _askGoToBookmark(String playlistId) async {
     final shouldMove = await showDialog<bool>(
       context: context,
@@ -266,34 +233,26 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
 
   void _toggleControls() => setState(() => _controlsVisible = !_controlsVisible);
 
-  void _zoomInAt(Offset position) {
-    final zoom = 2.2; // 원하는 확대 비율
-
-    final x = -position.dx * (zoom - 1);
-    final y = -position.dy * (zoom - 1);
-
-    setState(() {
-      _controller.value = Matrix4.identity()
-        ..translate(x, y)
-        ..scale(zoom);
-    });
-  }
-
-  void _resetPosition() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.value = Matrix4.identity(); // 원래 위치 & 크기
-    });
-  }
-
   void _nextPage() {
     if (_current < _maxHymn) {
-      setState(() => _current++);
+      setState(() {
+        _current++;
+      });
+      _loadBookmarkState();
+      _recordView();
+      _recordUserRecent();
     }
   }
 
   void _prevPage() {
     if (_current > _minHymn) {
-      setState(() => _current--);
+      setState(() {
+        _current--;
+      });
+
+      _loadBookmarkState();
+      _recordView();
+      _recordUserRecent();
     }
   }
 
@@ -577,39 +536,17 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _toggleControls, // 🔥 화면 어디든 탭하면 토글 온/오프
-        onDoubleTapDown: (details) {
-          _doubleTapPosition = details.localPosition;
-        },
-        onDoubleTap: () {
-          final scale = _controller.value.getMaxScaleOnAxis();
-
-          if (scale > 1.0) {
-            // 🔹 이미 확대 상태 → 다시 기본으로 초기화
-            _controller.value = Matrix4.identity();
-          } else {
-            // 🔹 기본 상태 → 더블탭한 지점을 중심으로 확대
-            _zoomInAt(_doubleTapPosition);
-          }
-        },
         child: Stack(
           children: [
             // 🔍 확대 가능한 악보
             Positioned.fill(
-              child: InteractiveViewer(
-                transformationController: _controller,   // 🔥 추가
-                panEnabled: _canPan,
-                scaleEnabled: true,
-                minScale: 1.0,
-                maxScale: 4.0,
-                boundaryMargin: const EdgeInsets.all(80),
-                child: Image.asset(
-                  'assets/scores/page_$_current.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('악보 이미지를 찾을 수 없습니다.'),
-                  ),
+              child: PhotoView(
+                backgroundDecoration: const BoxDecoration(
+                  color: Colors.white,
                 ),
+                imageProvider: AssetImage('assets/scores/page_$_current.png'),
+                minScale: PhotoViewComputedScale.contained,          // 화면에 꽉 차는 기본 배율
+                maxScale: PhotoViewComputedScale.contained * 4.0,    // 최대 4배 확대
               ),
             ),
 

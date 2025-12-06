@@ -35,6 +35,7 @@ Future<void> main() async {
       rethrow;
     }
   }
+  await _ensureUserSignedIn();
   KakaoSdk.init(nativeAppKey: '964ca6284360a7db3f8400c26a5d4be9');
 
   // ✅ Firestore 캐시 설정 (초기화 후)
@@ -51,6 +52,19 @@ Future<void> main() async {
   await testFirestoreConnection();
 
   runApp(const MyApp());
+}
+Future<void> _ensureUserSignedIn() async {
+  final auth = FirebaseAuth.instance;
+
+  // 이미 로그인(카카오/구글/이메일 등) 되어 있으면 그대로 사용
+  if (auth.currentUser != null) return;
+
+  try {
+    await auth.signInAnonymously();
+  } catch (e) {
+    // 오프라인이거나 에러 나도 앱은 그냥 켜지게 두고, 나중에 다시 시도 가능
+    debugPrint('익명 로그인 실패: $e');
+  }
 }
 
 Future<void> testFirestoreConnection() async {

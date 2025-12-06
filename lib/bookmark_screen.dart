@@ -145,6 +145,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
         children: [
           if (!isEditing) ...[
             _buildPlaylistChips(),
+            const SizedBox(height: 16),
           ],
           Expanded(
             child: isEditing ? _buildEditMode() : _buildNormalMode(),
@@ -478,15 +479,20 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                               .toList();
 
                           for (final doc in targets) {
-                            final data =
-                            doc.data() as Map<String, dynamic>;
-                            final number =
-                            (data['number'] ?? 0) as int;
+                            final data = doc.data() as Map<String, dynamic>;
+                            final number = (data['number'] ?? 0) as int;
 
-                            await playlistService.deleteSongFromPlaylist(
-                              playlistId: playlistId,
-                              hymnNumber: number,
-                            );
+                            // ✅ '전체' 재생목록에서 삭제할 때는
+                            //    모든 재생목록에서 해당 곡을 같이 삭제
+                            if (playlistName == '전체') {
+                              await _deleteSongFromAllPlaylists(number);
+                            } else {
+                              // ✅ 일반 재생목록에서는 기존처럼 해당 리스트에서만 삭제
+                              await playlistService.deleteSongFromPlaylist(
+                                playlistId: playlistId,
+                                hymnNumber: number,
+                              );
+                            }
                           }
 
                           setState(() {
@@ -727,7 +733,9 @@ class BookmarkScreenState extends State<BookmarkScreen> {
     if (editingPlaylists.isEmpty ||
         selectedPlaylistIndex >= editingPlaylists.length) return;
 
-    final playlistId = editingPlaylists[selectedPlaylistIndex]['id'] as String;
+    final playlist = editingPlaylists[selectedPlaylistIndex];
+    final playlistId   = playlist['id'] as String;
+    final playlistName = (playlist['name'] ?? '') as String;
 
     final collection = FirebaseFirestore.instance
         .collection('users')
@@ -748,10 +756,16 @@ class BookmarkScreenState extends State<BookmarkScreen> {
       final data = doc.data() as Map<String, dynamic>;
       final number = (data['number'] ?? 0) as int;
 
-      await playlistService.deleteSongFromPlaylist(
-        playlistId: playlistId,
-        hymnNumber: number,
-      );
+      if (playlistName == '전체') {
+        // 🔥 전체에서 지우면 모든 재생목록 + count도 같이 정리
+        await _deleteSongFromAllPlaylists(number);
+      } else {
+        // 🔥 일반 재생목록에서만 지울 때
+        await playlistService.deleteSongFromPlaylist(
+          playlistId: playlistId,
+          hymnNumber: number,
+        );
+      }
     }
 
     if (!mounted) return;
@@ -760,4 +774,37 @@ class BookmarkScreenState extends State<BookmarkScreen> {
     });
     _notifySelection();
   }
+
+  Future<void> _deleteSongFromAllPlaylists(int hymnNumber) async {
+    final playlistsRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('playlists');
+
+    // 1) 유저의 모든 플레이리스트 가져오기
+    final playlistsSnap = await playlistsRef.get();
+
+    for (final plDoc in playlistsSnap.docs) {
+      final songsRef = plDoc.reference.collection('songs');
+
+      // 2) 해당 번호(hymnNumber)를 가진 곡 찾기
+      final toDeleteSnap = await songsRef
+          .where('number', isEqualTo: hymnNumber)
+          .get();
+
+      if (toDeleteSnap.docs.isEmpty) continue;
+
+      // 3) 곡 문서 삭제
+      for (final songDoc in toDeleteSnap.docs) {
+        await songDoc.reference.delete();
+      }
+
+      // 4) 🔥 실제 남아 있는 곡 개수를 다시 세서 count에 그대로 넣기
+      final afterSnap = await songsRef.get();
+      await plDoc.reference.update({
+        'count': afterSnap.size,   // <= 여기서 정확히 맞춰준다
+      });
+    }
+  }
+
 }

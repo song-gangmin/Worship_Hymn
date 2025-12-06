@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'constants/text_styles.dart';
 import 'home_screen.dart';
 import 'score_screen.dart';
 import 'bookmark_screen.dart';
 import 'setting_screen.dart';
-import 'score_detail_screen.dart';
 import 'constants/colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 

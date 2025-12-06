@@ -6,6 +6,7 @@ import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 
 import '../UserRepository.dart';
 import '../auth/resualt_auth.dart';
+import '../services/user_data_migrator.dart';
 
 class NaverAuth implements AuthService {
   @override
@@ -40,8 +41,24 @@ class NaverAuth implements AuthService {
     final firebaseCustomToken = jsonDecode(resp.body)['firebaseToken'] as String;
 
     // 4) Firebase Auth 로그인
-    final fbUserCred = await fb.FirebaseAuth.instance.signInWithCustomToken(firebaseCustomToken);
+    // 🔥 1) 기존(익명) 유저 보관
+    final authInstance = fb.FirebaseAuth.instance;
+    final prevUser = authInstance.currentUser;
+    final String? anonUid =
+    (prevUser != null && prevUser.isAnonymous) ? prevUser.uid : null;
+
+    // 2) Firebase Auth 로그인
+    final fbUserCred =
+    await authInstance.signInWithCustomToken(firebaseCustomToken);
     final fb.User firebaseUser = fbUserCred.user!;
+
+    // 🔥 3) 익명 데이터 → 새 계정으로 마이그레이션
+    if (anonUid != null && anonUid != firebaseUser.uid) {
+      await UserDataMigrator().migrateAnonymousData(
+        fromUid: anonUid,
+        toUid: firebaseUser.uid,
+      );
+    }
 
     // 5) 이름 처리 (name > nickname > id 순서)
     final name = (account.name?.isNotEmpty == true)
