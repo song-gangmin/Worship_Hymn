@@ -72,6 +72,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: isEditing
             ? IconButton(

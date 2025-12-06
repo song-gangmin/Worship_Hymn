@@ -3,9 +3,13 @@ import '../constants/colors.dart';
 import '../constants/text_styles.dart';
 import 'section1_screen.dart';
 import 'auth/logout_helper.dart';
+import 'inquiry_screen.dart';
+
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'widget/playlist_dialog.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key,});
@@ -117,11 +121,18 @@ class SettingScreen extends StatelessWidget {
               color: AppColors.background,
               child: Column(
                 children: [
-                  _SettingItem(title: '프로필', onTap: () {}),
-                  _SettingItem(title: '계정', onTap: () {}),
-                  _SettingItem(title: '화면', onTap: () {}),
+                  //_SettingItem(title: '프로필', onTap: () {}),
+                  //_SettingItem(title: '계정', onTap: () {}),
+                  //_SettingItem(title: '화면', onTap: () {}),
                   const SizedBox(height: 20),
-                  _SettingItem(title: '문의', onTap: () {}),
+                  _SettingItem(title: '문의', onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const InquiryScreen(),
+                      ),
+                    );
+                  }),
                   const _SettingItem(
                     title: '버전',
                     trailing: Text('1.1.1', style: TextStyle(fontSize: 16, color: Colors.grey)),
@@ -131,9 +142,10 @@ class SettingScreen extends StatelessWidget {
                     isDestructive: signedIn,
                     onTap: () async {
                       if (signedIn) {
-                        await appLogout(context);
+                        await _showLogoutDialog(context);
                       } else {
-                        Navigator.push(context,
+                        Navigator.push(
+                          context,
                           MaterialPageRoute(builder: (_) => const Section1Screen()),
                         );
                       }
@@ -146,6 +158,23 @@ class SettingScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+  // 🔥 로그아웃 다이얼로그 함수
+  Future<void> _showLogoutDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => PlaylistDialog(
+        title: '로그아웃 하시겠습니까?',
+        confirmText: '확인',
+        controller: TextEditingController(), // 사용 안하지만 필수 파라미터면 유지
+        showTextField: false,
+        onConfirm: () => Navigator.pop(ctx, true),
+      ),
+    );
+
+    if (confirmed == true) {
+      await appLogout(context);
+    }
   }
 }
 

@@ -70,6 +70,7 @@ class PlaylistService {
   Future<void> addSongSmart({
     required String playlistId,
     required int hymnNumber,
+
     required String title,
   }) async {
     final songId = hymnNumber.toString();

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/playlist_service.dart';
-import 'bookmark_screen.dart';
 import 'main_screen.dart';
 import 'constants/text_styles.dart';
 import 'constants/colors.dart';

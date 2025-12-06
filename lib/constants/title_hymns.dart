@@ -1,3 +1,16 @@
+/// 1장~588장 전체를 표현하는 모델
+class HymnInfo {
+  final int number;   // 장 번호
+  final String title; // 제목
+  final String lyrics; // 가사(지금은 비워두고 나중에 넣어도 됨)
+
+  const HymnInfo({
+    required this.number,
+    required this.title,
+    this.lyrics = '',
+  });
+}
+
 final List<String> hymnTitles = [
   "1  거룩하신 하나님", "2  모두 함께 찬양하세", "3  영광의 왕께 다 경배하며", "4  오 하나님 우리의 창조주시니", "5  저 높고 푸른 하늘과",
   "6  온 천하 만물 우러러", "7  하나님이 독생자를", "8  주가 세상을 다스리니", "9  주 하나님 지으신 모든 세계", "10  찬양하라 천군들아",
@@ -118,3 +131,20 @@ final List<String> hymnTitles = [
   "581  이 세상 가장 아름다운(그가 오신 이유)", "582  주님 다시 오실 때까지", "583  주 보혈 날 정결케 하고(주의 손에 나의 손을 포개고)", "584  하나님께로 더 가까이", "585  하나님 눈길 머무신 곳",
   "586  하나님의 사랑 주님의 눈물", "587  마라나타", "588  저 하늘에는 눈물이 없네"
 ];
+
+/// hymnTitles → HymnInfo 리스트로 변환한 전체 목록
+final List<HymnInfo> allHymns = List.generate(
+  hymnTitles.length,
+      (index) {
+    final raw = hymnTitles[index];
+    final sp = raw.indexOf(' ');
+    final number = int.parse(raw.substring(0, sp).trim());
+    final title  = raw.substring(sp + 1).trim();
+
+    return HymnInfo(
+      number: number,
+      title: title,
+      lyrics: '', // 나중에 가사 데이터 생기면 여기 채우면 됨
+    );
+  },
+);
