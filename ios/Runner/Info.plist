@@ -68,6 +68,11 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NidAppName</key>
 	<string>예배찬송가</string>
 	<key>NidClientID</key>
@@ -95,10 +100,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSAppTransportSecurity</key>
-        <dict>
-        	<key>NSAllowsArbitraryLoads</key>
-        	<true/>
-        </dict>
-	</dict>
+</dict>
 </plist>

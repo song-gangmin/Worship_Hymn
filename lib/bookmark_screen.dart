@@ -4,6 +4,8 @@ import '../constants/text_styles.dart';
 import 'widget/playlist_dialog.dart';
 import 'dart:async';
 import 'score_detail_screen.dart';
+import 'dart:ui' show FontFeature;
+
 
 import 'services/playlist_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -143,7 +145,6 @@ class BookmarkScreenState extends State<BookmarkScreen> {
         children: [
           if (!isEditing) ...[
             _buildPlaylistChips(),
-            const Divider(height: 1, color: Color(0xFFEAEAEA)),
           ],
           Expanded(
             child: isEditing ? _buildEditMode() : _buildNormalMode(),
@@ -235,21 +236,33 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    border: Border(bottom: BorderSide(color: Color(0xFFEAEAEA))),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.black12, width: 0.5),
+                    ),
                   ),
                   child: ListTile(
                     dense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    leading: Text(
-                      number.toString(),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15),
+                    leading: SizedBox(
+                      width: 40,
+                      child: Text(
+                        number.toString(),
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w300,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
                     ),
                     title: Text(
                       title,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w400),
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
+
                     trailing: const Icon(Icons.drag_handle,
                         color: Colors.black54, size: 20),
                     onTap: () {
@@ -389,8 +402,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                                 color:
                                 selected ? Colors.black12 : Colors.white,
                                 border: const Border(
-                                  bottom:
-                                  BorderSide(color: Color(0xFFEAEAEA)),
+                                  bottom: BorderSide(color: Colors.black12, width: 0.5),
                                 ),
                               ),
                               child: ListTile(

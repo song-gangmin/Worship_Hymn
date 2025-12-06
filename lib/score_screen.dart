@@ -1,3 +1,5 @@
+import 'dart:ui' show FontFeature; // 🔹 숫자 폭 고정용
+
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../constants/title_hymns.dart';
@@ -144,7 +146,8 @@ class ScoreScreenState extends State<ScoreScreen> {
       if (filtered.isEmpty) return const SizedBox.shrink();
 
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Card(
           color: Colors.white,
           shape: RoundedRectangleBorder(
@@ -188,8 +191,10 @@ class ScoreScreenState extends State<ScoreScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(_title,
-                          style: AppTextStyles.sectionTitle),
+                      child: Text(
+                        _title,
+                        style: AppTextStyles.sectionTitle,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, size: 20),
@@ -226,7 +231,7 @@ class ScoreScreenState extends State<ScoreScreen> {
       if (i != nums.length - 1) {
         items.add(const Padding(
           padding: EdgeInsets.symmetric(horizontal: 14),
-          child: Divider(height: 1, color: Colors.grey),
+          child: Divider(height: 0.5, color: Colors.black12),
         ));
       }
     }
@@ -237,7 +242,7 @@ class ScoreScreenState extends State<ScoreScreen> {
   Widget _buildEntry(int num) {
     final raw = hymnTitles[num - 1];
     final sp = raw.indexOf(' ');
-    final numberPart = raw.substring(0, sp);
+    final numberPart = raw.substring(0, sp);   // "1", "10", "100" ...
     final titlePart = raw.substring(sp + 1);
 
     return InkWell(
@@ -256,12 +261,22 @@ class ScoreScreenState extends State<ScoreScreen> {
         const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           children: [
-            Text(
-              numberPart,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w300),
+            // 🔹 숫자 컬럼: 폭 고정 + 등폭 숫자 + 오른쪽 정렬
+            SizedBox(
+              width: 40, // 숫자 1~588까지 커버할 정도로 고정 폭
+              child: Text(
+                numberPart,
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w300,
+                  // 숫자 폭을 동일하게 만드는 설정 (폰트가 지원하면 적용됨)
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
             ),
             const SizedBox(width: 8),
+            // 제목: 항상 같은 x좌표에서 시작
             Expanded(
               child: Text(
                 titlePart,

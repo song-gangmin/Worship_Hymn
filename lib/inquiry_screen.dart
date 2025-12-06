@@ -10,16 +10,19 @@ class InquiryScreen extends StatefulWidget {
 }
 
 class _InquiryScreenState extends State<InquiryScreen> {
-  final _formKey = GlobalKey<FormState>();
-
   final TextEditingController _emailIdController = TextEditingController();
   final TextEditingController _emailDomainController = TextEditingController();
-
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
 
   int titleCount = 0;
   int contentCount = 0;
+
+  // 🔴 각 필드 에러 상태를 직접 관리
+  bool _emailIdError = false;
+  bool _emailDomainError = false;
+  bool _titleError = false;
+  bool _contentError = false;
 
   @override
   void dispose() {
@@ -37,141 +40,187 @@ class _InquiryScreenState extends State<InquiryScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: const Text('문의', style: AppTextStyles.headline),
-        centerTitle: false,
+        centerTitle: true,
+        title: Text(
+          '문의',
+          style: AppTextStyles.headline.copyWith(fontSize: 18),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 10),
-              const Text("안녕하세요\n무엇을 도와드릴까요?",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
-              ),
-              const SizedBox(height: 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+            const Text(
+              "안녕하세요\n무엇을 도와드릴까요?",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 28),
 
-              // 이메일 제목
-              _buildLabel("답변 받을 이메일 주소 *"),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _emailIdController,
-                      hint: "이메일 주소",
-                      validator: (v) => v == null || v.isEmpty ? "필수 입력" : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text("@"),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _emailDomainController,
-                      hint: "직접 입력",
-                      validator: (v) => v == null || v.isEmpty ? "필수 입력" : null,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 26),
-              _buildLabel("문의 제목 *"),
-              const SizedBox(height: 6),
-
-              Stack(
-                alignment: Alignment.centerRight,
-                children: [
-                  _buildTextField(
-                    controller: _titleController,
-                    hint: "제목을 입력해 주세요 (20자 이내)",
-                    maxLength: 20,
-                    onChanged: (v) => setState(() => titleCount = v.length),
-                    validator: (v) => (v == null || v.isEmpty)
-                        ? "필수 입력"
-                        : null,
-                  ),
-                  Positioned(
-                    right: 12,
-                    bottom: 10,
-                    child: Text("$titleCount / 20",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  )
-                ],
-              ),
-
-              const SizedBox(height: 26),
-              _buildLabel("문의 내용 *"),
-              const SizedBox(height: 6),
-
-              Stack(
-                alignment: Alignment.centerRight,
-                children: [
-                  TextFormField(
-                    controller: _contentController,
-                    maxLines: 8,
-                    maxLength: 1000,
-                    onChanged: (v) => setState(() => contentCount = v.length),
-                    decoration: _inputDecoration("내용을 입력해 주세요 (1000자 이내)"),
-                    validator: (v) => (v == null || v.isEmpty)
-                        ? "필수 입력"
-                        : null,
-                  ),
-                  Positioned(
-                    right: 12,
-                    bottom: 10,
-                    child: Text("$contentCount / 1000",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  )
-                ],
-              ),
-
-              const SizedBox(height: 30),
-
-              // 버튼
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: _submitInquiry,
-                  child: const Text(
-                    "문의 접수",
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            // 이메일
+            _buildLabel("답변 받을 이메일 주소", required: true),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    controller: _emailIdController,
+                    hint: "이메일 주소",
+                    isError: _emailIdError,
+                    onChanged: (_) {
+                      if (_emailIdError) {
+                        setState(() => _emailIdError = false);
+                      }
+                    },
                   ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                const Text("@"),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildTextField(
+                    controller: _emailDomainController,
+                    hint: "직접 입력",
+                    isError: _emailDomainError,
+                    onChanged: (_) {
+                      if (_emailDomainError) {
+                        setState(() => _emailDomainError = false);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
 
-              const SizedBox(height: 40),
-            ],
-          ),
+            const SizedBox(height: 26),
+            _buildLabel("문의 제목", required: true),
+            const SizedBox(height: 6),
+
+            Stack(
+              alignment: Alignment.centerRight,
+              children: [
+                _buildTextField(
+                  controller: _titleController,
+                  hint: "제목을 입력해 주세요 (20자 이내)",
+                  maxLength: 20,
+                  isError: _titleError,
+                  onChanged: (v) {
+                    setState(() {
+                      titleCount = v.length;
+                      if (_titleError && v.isNotEmpty) {
+                        _titleError = false;
+                      }
+                    });
+                  },
+                ),
+                Positioned(
+                  right: 12,
+                  bottom: 10,
+                  child: Text(
+                    "$titleCount / 20",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                )
+              ],
+            ),
+
+            const SizedBox(height: 26),
+            _buildLabel("문의 내용", required: true),
+            const SizedBox(height: 6),
+
+            Stack(
+              alignment: Alignment.centerRight,
+              children: [
+                TextFormField(
+                  controller: _contentController,
+                  maxLines: 8,
+                  maxLength: 1000,
+                  onChanged: (v) {
+                    setState(() {
+                      contentCount = v.length;
+                      if (_contentError && v.isNotEmpty) {
+                        _contentError = false;
+                      }
+                    });
+                  },
+                  decoration: _inputDecoration(
+                    "내용을 입력해 주세요 (1000자 이내)",
+                    isError: _contentError,
+                  ),
+                ),
+                Positioned(
+                  right: 12,
+                  bottom: 10,
+                  child: Text(
+                    "$contentCount / 1000",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                )
+              ],
+            ),
+
+            const SizedBox(height: 30),
+
+            // 버튼
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: _submitInquiry,
+                child: const Text(
+                  "문의 접수",
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 40),
+          ],
         ),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────
-  //  문의 제출 함수
-  // ─────────────────────────────────────────────
+  // 🔔 제출 시 직접 검증
   void _submitInquiry() {
-    if (!_formKey.currentState!.validate()) return;
+    final emailId = _emailIdController.text.trim();
+    final emailDomain = _emailDomainController.text.trim();
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
 
-    final email = "${_emailIdController.text}@${_emailDomainController.text}";
-    final title = _titleController.text;
-    final content = _contentController.text;
+    bool hasError = false;
 
-    // TODO: Firestore or backend 업로드 로직 추가 가능
-    // FirebaseFirestore.instance.collection("inquiries").add({...})
+    if (emailId.isEmpty) {
+      _emailIdError = true;
+      hasError = true;
+    }
+    if (emailDomain.isEmpty) {
+      _emailDomainError = true;
+      hasError = true;
+    }
+    if (title.isEmpty) {
+      _titleError = true;
+      hasError = true;
+    }
+    if (content.isEmpty) {
+      _contentError = true;
+      hasError = true;
+    }
+
+    if (hasError) {
+      setState(() {});
+      return;
+    }
+
+    final email = "$emailId@$emailDomain";
 
     showDialog(
       context: context,
@@ -192,51 +241,72 @@ class _InquiryScreenState extends State<InquiryScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  //  Label
-  // ─────────────────────────────────────────────
-  Widget _buildLabel(String text) {
-    return Text(text,
+  // Label
+  Widget _buildLabel(String text, {bool required = false}) {
+    return RichText(
+      text: TextSpan(
+        text: text,
         style: const TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 16,
-        ));
+          color: Colors.black, // 기본 글자색
+        ),
+        children: required
+            ? const [
+          TextSpan(
+            text: ' *',              // 별표는 따로
+            style: TextStyle(
+              color: Colors.red,     // 🔴 여기만 빨간색
+            ),
+          ),
+        ]
+            : [],
+      ),
+    );
   }
 
-  // ─────────────────────────────────────────────
-  //  공통 텍스트필드
-  // ─────────────────────────────────────────────
+  // 공통 텍스트필드
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
-    String? Function(String?)? validator,
+    bool isError = false,
     int? maxLength,
     Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
-      validator: validator,
       maxLength: maxLength,
       onChanged: onChanged,
-      decoration: _inputDecoration(hint),
+      decoration: _inputDecoration(hint, isError: isError),
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  // 에러 여부에 따라 border 색만 바꿈 (에러 텍스트 없음 → 간격 변화 X)
+  InputDecoration _inputDecoration(String hint, {bool isError = false}) {
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(
+        color: isError ? Colors.red : Colors.grey,
+      ),
+    );
+
+    final focusedBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(
+        color: isError ? Colors.red : AppColors.primary,
+      ),
+    );
+
     return InputDecoration(
       hintText: hint,
       counterText: "",
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.grey),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.primary),
-      ),
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      enabledBorder: baseBorder,
+      focusedBorder: focusedBorder,
+      // validator를 안 쓰기 때문에 errorBorder도 필요 없음
     );
   }
 }

@@ -3,6 +3,7 @@ import '../constants/colors.dart';
 import '../constants/text_styles.dart';
 import '../constants/title_hymns.dart'; // HymnInfo, allHymns
 import 'score_detail_screen.dart';
+import 'dart:ui' show FontFeature;
 
 class SearchScreen extends StatefulWidget {
   final List<HymnInfo> hymns;
@@ -19,11 +20,12 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   late List<HymnInfo> _filtered;
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
-    _filtered = widget.hymns; // 처음엔 전체 1~588
+    _filtered = []; // ✅ 처음엔 아무 것도 안 보이게
     _controller.addListener(_onSearchChanged);
   }
 
@@ -38,16 +40,18 @@ class _SearchScreenState extends State<SearchScreen> {
     final q = _controller.text.trim().toLowerCase();
 
     setState(() {
-      if (q.isEmpty) {
-        _filtered = widget.hymns;
+      _query = q;
+      if (_query.isEmpty) {
+        // ✅ 검색어가 없으면 리스트 비우기
+        _filtered = [];
       } else {
         _filtered = widget.hymns.where((h) {
           final numStr = h.number.toString();
           final title = h.title.toLowerCase();
           final lyrics = h.lyrics.toLowerCase();
-          return numStr.contains(q) ||
-              title.contains(q) ||
-              lyrics.contains(q);
+          return numStr.contains(_query) ||
+              title.contains(_query) ||
+              lyrics.contains(_query);
         }).toList();
       }
     });
@@ -61,8 +65,12 @@ class _SearchScreenState extends State<SearchScreen> {
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text('찬송가 검색', style: AppTextStyles.headline),
-        centerTitle: false,
+        centerTitle: true,
+        // ✅ 가운데 검색 아이콘만 표시
+        title: Text(
+          '검색',                              // ✅ 가운데에 "검색" 텍스트
+          style: AppTextStyles.headline.copyWith(fontSize: 18)
+        ),
       ),
       body: Column(
         children: [
@@ -92,7 +100,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
           // 📄 리스트 (악보 탭 스타일)
           Expanded(
-            child: _filtered.isEmpty
+            child: _query.isEmpty
+            // ✅ 처음엔 완전 빈 화면
+                ? const SizedBox.shrink()
+                : (_filtered.isEmpty
+            // ✅ 검색어는 있는데 결과가 없을 때만 안내 문구
                 ? const Center(
               child: Text(
                 '검색 결과가 없습니다.',
@@ -106,22 +118,22 @@ class _SearchScreenState extends State<SearchScreen> {
               separatorBuilder: (_, __) => const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 0),
                 child: Divider(
-                  height: 1,
-                  color: Colors.grey,
+                  height: 0.5,
+                  color: Colors.black12,
                 ),
               ),
               itemBuilder: (context, index) {
                 final hymn = _filtered[index];
                 return _buildResultRow(hymn);
               },
-            ),
+            )),
           ),
         ],
       ),
     );
   }
 
-  /// score_screen 의 _buildEntry 디자인을 그대로 가져온 버전
+  /// score_screen 의 _buildEntry 디자인 그대로
   Widget _buildResultRow(HymnInfo hymn) {
     return InkWell(
       onTap: () {
@@ -136,15 +148,19 @@ class _SearchScreenState extends State<SearchScreen> {
         );
       },
       child: Padding(
-        padding:
-        const EdgeInsets.symmetric(horizontal: 0, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 13),
         child: Row(
           children: [
-            Text(
-              '${hymn.number}',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w300,
+            SizedBox(
+              width: 40, // ← ScoreScreen과 동일한 숫자 컬럼 너비
+              child: Text(
+                '${hymn.number}',
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w300,
+                  fontFeatures: [FontFeature.tabularFigures()], // 숫자 폭 고정
+                ),
               ),
             ),
             const SizedBox(width: 8),

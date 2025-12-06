@@ -4,7 +4,7 @@ import 'colors.dart';
 class AppTextStyles {
   // 제목 (홈 탭 상단 "홈", 섹션 제목 등)
   static const TextStyle headline = TextStyle(
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: FontWeight.w600,
     color: Colors.black,
   );

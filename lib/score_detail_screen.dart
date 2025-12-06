@@ -38,6 +38,9 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   bool _isFullscreen = false;
   bool _isBookmarked = false;
 
+  String? _defaultPlaylistId; // ✅ '전체' 플레이리스트 id
+
+
   late String uid;
   late PlaylistService playlistService;
   late RecentService recentService;
@@ -62,6 +65,8 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     recentService = RecentService(uid: uid);
     globalService = GlobalStatsService();
 
+    _loadBookmarkState();
+
     _recordView();
 
     _recordUserRecent();
@@ -84,6 +89,130 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
         });
       }
     });
+  }
+
+  Future<void> _loadBookmarkState() async {
+    try {
+      // 1) 플레이리스트 목록에서 '전체' 찾기
+      final playlists = await playlistService.getPlaylists().first;
+      Map<String, dynamic>? defaultPlaylist;
+
+      for (final p in playlists) {
+        if (p['name'] == '전체') {
+          defaultPlaylist = p;
+          break;
+        }
+      }
+
+      if (defaultPlaylist == null) return;
+
+      _defaultPlaylistId = defaultPlaylist['id'] as String;
+
+      // 2) '전체' 플레이리스트의 songs 에 현재 곡이 있는지 확인
+      final songsSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('playlists')
+          .doc(_defaultPlaylistId)
+          .collection('songs')
+          .where('number', isEqualTo: _current)
+          .limit(1)
+          .get();
+
+      if (!mounted) return;
+
+      setState(() {
+        _isBookmarked = songsSnap.docs.isNotEmpty;
+      });
+    } catch (_) {
+      // 에러는 조용히 무시 (아이콘만 회색으로 두면 됨)
+    }
+  }
+  Future<void> _removeFromDefaultBookmark() async {
+    try {
+      // 혹시 아직 못 가져왔으면 한 번 더 시도
+      if (_defaultPlaylistId == null) {
+        await _loadBookmarkState();
+        if (_defaultPlaylistId == null) return;
+      }
+
+      final songsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('playlists')
+          .doc(_defaultPlaylistId)
+          .collection('songs');
+
+      final snap =
+      await songsRef.where('number', isEqualTo: _current).get();
+
+      if (snap.docs.isEmpty) {
+        if (mounted) {
+          setState(() => _isBookmarked = false);
+        }
+        return;
+      }
+
+      // 곡 삭제
+      for (final doc in snap.docs) {
+        await doc.reference.delete();
+      }
+
+      // count 필드도 줄여주기
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('playlists')
+          .doc(_defaultPlaylistId)
+          .update({
+        'count': FieldValue.increment(-snap.docs.length),
+      });
+
+      if (!mounted) return;
+
+      setState(() => _isBookmarked = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('즐겨찾기에서 삭제되었습니다.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('즐겨찾기 삭제 중 오류가 발생했습니다.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  Future<void> _askGoToBookmark(String playlistId) async {
+    final shouldMove = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => PlaylistDialog(
+        title: '즐겨찾기로 이동할까요?',
+        confirmText: '이동',
+        controller: TextEditingController(),
+        showTextField: false,
+        onConfirm: () => Navigator.pop(ctx, true),
+      ),
+    );
+
+    if (shouldMove == true && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MainScreen(
+            initialTabIndex: 2,
+            initialPlaylistId: playlistId,
+          ),
+        ),
+            (route) => false,
+      );
+    }
   }
 
   Future<void> _recordUserRecent() async {
@@ -188,17 +317,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
           backgroundColor: AppColors.primary,
         ),
       );
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MainScreen(
-            initialTabIndex: 2,
-            initialPlaylistId: playlistId,
-          ),
-        ),
-            (route) => false,
-      );
+      await _askGoToBookmark(playlistId);
     } on StateError catch (e) {
       if (!mounted) return;
       if (e.message == 'DUPLICATE_SONG_IN_PLAYLIST') {
@@ -228,8 +347,6 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
       );
     }
   }
-
-
 
   /// 즐겨찾기 선택 bottom sheet (전체는 선택지에서 제거)
   void _showBookmarkBottomSheet(BuildContext context) {
@@ -441,7 +558,15 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                 _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
                 color: _isBookmarked ? AppColors.primary : Colors.black87,
               ),
-              onPressed: () => _showBookmarkBottomSheet(context),
+              onPressed: () async {
+                if (_isBookmarked) {
+                  // ✅ 이미 북마크인 경우 → 다시 누르면 삭제
+                  await _removeFromDefaultBookmark();
+                } else {
+                  // ✅ 아직 북마크가 아닌 경우 → 바텀시트 열어서 플레이리스트 선택
+                  _showBookmarkBottomSheet(context);
+                }
+              },
             ),
           ],
         );
@@ -509,14 +634,6 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                   onTap: _nextPage,
                 ),
               ),
-
-            // 🖥 전체화면 토글 버튼 (오른쪽 하단)
-            if (_controlsVisible)
-              Positioned(
-                right: 20,
-                top: kToolbarHeight + 16,
-                child: _fullscreenButton(),
-              ),
           ],
         ),
       ),
@@ -535,27 +652,6 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white, size: 32),
-      ),
-    );
-  }
-  Widget _fullscreenButton() {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isFullscreen = !_isFullscreen;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.35),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
-          color: Colors.white,
-          size: 26,
-        ),
       ),
     );
   }
