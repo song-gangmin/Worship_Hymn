@@ -121,12 +121,16 @@ class BookmarkScreenState extends State<BookmarkScreen> {
               setState(() => isEditing = false);
               _clearSelectionAndNotify();
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('변경사항이 저장되었습니다.'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              if (mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('변경사항이 저장되었습니다.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                });
+              }
             },
             child: Text(
               isEditing ? '완료' : '편집',
@@ -221,63 +225,104 @@ class BookmarkScreenState extends State<BookmarkScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final songs = songSnap.data!.docs;
+            List<DocumentSnapshot> songs = songSnap.data!.docs;
             if (songs.isEmpty) {
               return const Center(child: Text('곡이 없습니다.'));
             }
 
-            return ListView.builder(
+            return ReorderableListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: songs.length,
+              onReorder: (oldIndex, newIndex) async {
+                if (newIndex > oldIndex) newIndex -= 1;
+
+                final moved = songs.removeAt(oldIndex);
+                songs.insert(newIndex, moved);
+
+                // Firestore 저장
+                for (int i = 0; i < songs.length; i++) {
+                  await songs[i].reference.update({'order': i});
+                }
+
+                setState(() {});
+              },
               itemBuilder: (_, i) {
                 final data = songs[i].data() as Map<String, dynamic>;
                 final title = data['title'] ?? '(제목 없음)';
                 final number = (data['number'] ?? 0) as int;
 
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      bottom: BorderSide(color: Colors.black12, width: 0.5),
-                    ),
+                return Dismissible(
+                  key: ValueKey(songs[i].id), // ★ 다시 ValueKey 유지해야 스와이프 정상됨
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  child: ListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    leading: SizedBox(
-                      width: 40,
-                      child: Text(
-                        number.toString(),
-                        textAlign: TextAlign.left,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w300,
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      title,
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  onDismissed: (_) async {
+                    final removedDoc = songs[i];
+                    final removedNumber = removedDoc['number'];
 
-                    trailing: const Icon(Icons.drag_handle,
-                        color: Colors.black54, size: 20),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ScoreDetailScreen(
-                            hymnNumber: number,
-                            hymnTitle: title,
+                    // 🔥 UI에서 즉시 제거
+                    setState(() {
+                      songs.removeAt(i);
+                    });
+
+                    // 🔥 Firestore 삭제
+                    if (selectedPlaylist['name'] == '전체') {
+                      await _deleteSongFromAllPlaylists(removedNumber);
+                    } else {
+                      await playlistService.deleteSongFromPlaylist(
+                        playlistId: selectedPlaylistId,
+                        hymnNumber: removedNumber,
+                      );
+                    }
+                  },
+                    child: Container(
+                        key: ValueKey("tile_$i"),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            bottom: BorderSide(color: Colors.black12, width: 0.5),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                        child: ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            leading: SizedBox(
+                              width: 40,
+                              child: Text(
+                                number.toString(),
+                                textAlign: TextAlign.left,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              title,
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            trailing: const Icon(Icons.drag_handle,
+                                color: Colors.black54, size: 20),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ScoreDetailScreen(
+                                    hymnNumber: number,
+                                    hymnTitle: title,
+                                  ),
+                                ),
+                              );
+                            },
+                        ),
+                    ),
                 );
               },
             );
@@ -501,13 +546,15 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                           _notifySelection();
 
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('선택한 곡이 삭제되었습니다.'),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('선택한 곡이 삭제되었습니다.'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            });
                           }
                         },
                       ),
@@ -636,15 +683,35 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
           Navigator.pop(ctx);
 
-          await playlistService.addPlaylist(name);
+          try {
+            await playlistService.addPlaylist(name);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('"$name" 즐겨찾기가 추가되었습니다.'),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.primary,
-            ),
-          );
+            if (mounted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('"$name" 즐겨찾기가 추가되었습니다.'),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: AppColors.primary,
+                  ),
+                );
+              });
+            }
+          } on StateError catch (e) {
+            // 🔥 중복 이름일 때
+            if (e.message == 'DUPLICATE_PLAYLIST_NAME') {
+              if (mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('이미 같은 이름의 즐겨찾기가 있습니다.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                });
+              }
+            }
+          }
         },
       ),
     );
@@ -716,13 +783,17 @@ class BookmarkScreenState extends State<BookmarkScreen> {
 
       widget.onGoToTab?.call(2);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('"$name" 즐겨찾기가 삭제되었습니다.'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('"$name" 즐겨찾기가 삭제되었습니다.'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        });
+      }
     }
   }
 

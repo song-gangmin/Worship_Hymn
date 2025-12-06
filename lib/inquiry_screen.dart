@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../constants/text_styles.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InquiryScreen extends StatefulWidget {
   const InquiryScreen({super.key});
@@ -189,8 +191,7 @@ class _InquiryScreenState extends State<InquiryScreen> {
     );
   }
 
-  // 🔔 제출 시 직접 검증
-  void _submitInquiry() {
+  Future<void> _submitInquiry() async {
     final emailId = _emailIdController.text.trim();
     final emailDomain = _emailDomainController.text.trim();
     final title = _titleController.text.trim();
@@ -220,26 +221,82 @@ class _InquiryScreenState extends State<InquiryScreen> {
       return;
     }
 
-    final email = "$emailId@$emailDomain";
+    final replyEmail = "$emailId@$emailDomain";
 
+    try {
+      await FirebaseFirestore.instance.collection('inquiries').add({
+        'title': title,
+        'content': content,
+        'replyEmail': replyEmail,
+        'createdAt': FieldValue.serverTimestamp(),
+        'platform': 'ios', // 필요하면 안드/ios 구분용
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('문의 저장 중 오류가 발생했습니다: $e')),
+      );
+      return;
+    }
+    _showInquiryCompleteDialog(replyEmail);
+  }
+
+  void _showInquiryCompleteDialog(String email) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text("문의가 접수되었습니다!"),
-        content: Text("답변은 입력하신 이메일로 발송됩니다.\n($email)"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // dialog 닫기
-              Navigator.pop(context); // InquiryScreen 닫기
-            },
-            child: const Text("확인"),
-          )
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (_) {
+        return AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          title: Text(
+            '문의가 접수되었습니다!',
+            style: AppTextStyles.sectionTitle,
+          ),
+          content: SizedBox(
+            width: 300,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Text(
+                '관리자가 확인 후 입력하신 이메일로 답변 드리겠습니다.\n($email)',
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          actions: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // dialog 닫기
+                  Navigator.pop(context); // InquiryScreen 닫기
+                },
+                child: Text(
+                  '확인',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
+
+
+
 
   // Label
   Widget _buildLabel(String text, {bool required = false}) {

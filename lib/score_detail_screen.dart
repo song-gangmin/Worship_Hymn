@@ -138,21 +138,28 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
 
       setState(() => _isBookmarked = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('즐겨찾기에서 삭제되었습니다.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('즐겨찾기에서 삭제되었습니다.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        });
+      }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('즐겨찾기 삭제 중 오류가 발생했습니다.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('즐겨찾기 삭제 중 오류가 발생했습니다.'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.red,
+            ),
+          );
+        });
+      }
     }
   }
 
@@ -269,41 +276,57 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
 
       setState(() => _isBookmarked = true);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('"$playlistName"에 곡이 추가되었습니다.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('"$playlistName"에 곡이 추가되었습니다.'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppColors.primary,
+            ),
+          );
+        });
+      }
       await _askGoToBookmark(playlistId);
     } on StateError catch (e) {
       if (!mounted) return;
       if (e.message == 'DUPLICATE_SONG_IN_PLAYLIST') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('이미 즐겨찾기에 포함되어 있습니다.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('이미 즐겨찾기에 포함되어 있습니다.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          });
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('곡 추가 실패: ${e.message}'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('곡 추가 실패: ${e.message}'),
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Colors.red,
+              ),
+            );
+          });
+        }
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('곡 추가 중 오류가 발생했습니다.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('곡 추가 중 오류가 발생했습니다.'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.red,
+            ),
+          );
+        });
+      }
     }
   }
 

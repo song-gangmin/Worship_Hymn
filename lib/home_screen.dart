@@ -13,7 +13,7 @@ import 'global_stats_service.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'RecentListScreen.dart';
+import 'RecentAllScreen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 
@@ -139,55 +139,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 🔥 최근 본 찬송가 Top 3
+// 🔥 최근 본 찬송가 Top 3
   Widget _buildRecent3() {
     return StreamBuilder(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('recent_views')
-          .orderBy('viewedAt', descending: true)
-          .limit(3)
-          .snapshots(),
+      stream: RecentService(uid: uid).getRecent3(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          // 디버깅용으로 한 번만 찍고, UI는 그냥 비워두는 게 좋음
-          debugPrint('recent_views error: ${snapshot.error}');
-          return const SizedBox.shrink();
-        }
+        if (!snapshot.hasData) return const SizedBox.shrink();
 
-        if (!snapshot.hasData) {
-          return const SizedBox.shrink();
-        }
-
-        final docs = snapshot.data!.docs;
+        final list = snapshot.data!;
 
         return Column(
-          children: docs.map((doc) {
-            final data = doc.data()!;
+          children: list.map((item) {
+            final rawNumber = item['number'];
+            final number = rawNumber is int
+                ? rawNumber
+                : int.tryParse(rawNumber.toString()) ?? 0;
 
-            // number, title도 타입 안전하게
-            final rawNumber = data['number'];
-            final int number =
-            rawNumber is int ? rawNumber : int.tryParse(rawNumber.toString()) ?? 0;
+            final String rawTitle = item['title'] ?? '';
+            final String title = rawTitle.toString().trim();
+            final ts = item['viewedAt'];
 
-            final String title = (data['title'] ?? '').toString();
-
-            // 🔥 viewedAt 안전 처리 (serverTimestamp() 때문에 null 가능)
-            final rawViewedAt = data['viewedAt'];
             DateTime viewedAt;
-
-            if (rawViewedAt is Timestamp) {
-              viewedAt = rawViewedAt.toDate();
+            if (ts is Timestamp) {
+              viewedAt = ts.toDate();
             } else {
-              // 아직 서버에서 timestamp 안 채워졌으면 그냥 지금 시간으로 대체
               viewedAt = DateTime.now();
             }
 
             return _buildSongTile(
               number: number,
               title: title,
-              trailingText: timeAgo(viewedAt),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.history,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    timeAgo(viewedAt),
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
             );
           }).toList(),
         );
@@ -195,8 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-  // 🔥 이번 주 인기 찬송가 Top 3
+// 🔥 이번 주 인기 찬송가 Top 3
   Widget _buildWeeklyTop3() {
     return StreamBuilder(
       stream: FirebaseFirestore.instance
@@ -224,13 +222,30 @@ class _HomeScreenState extends State<HomeScreen> {
             final int number =
             rawNumber is int ? rawNumber : int.tryParse(rawNumber.toString()) ?? 0;
 
-            final String title = (data['title'] ?? '').toString();
+            final String title = (data['title'] ?? '').toString().trim();
             final int weeklyCount = (data['weeklyCount'] ?? 0) as int;
 
             return _buildSongTile(
               number: number,
               title: title,
-              trailingText: "조회수 $weeklyCount",
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.remove_red_eye,
+                    size: 18,
+                    color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    "$weeklyCount",
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
             );
           }).toList(),
         );
@@ -238,49 +253,92 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-  // 🎵 공통 Song Tile UI
   Widget _buildSongTile({
     required int number,
     required String title,
-    String? subtitle,
-    String? trailingText,
+    Widget? trailing,
   }) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.only(left: 20, right: 20),
-        horizontalTitleGap: 20, // ← 이 값을 조절하면 아이콘과 텍스트 사이 간격이 줄어듦
-        leading: SvgPicture.asset(
-          'assets/icon/music.svg',
-          width: 32,
-          height: 32,
-          colorFilter: const ColorFilter.mode(AppColors.primary, BlendMode.srcIn),
-        ),
-        title: Text("$number장", style: AppTextStyles.body),
-        subtitle: Text(title),
-        trailing: trailingText != null
-            ? Text(trailingText, style: AppTextStyles.caption)
-            : null,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ScoreDetailScreen(
-                hymnNumber: number,
-                hymnTitle: title,
-              ),
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ScoreDetailScreen(
+              hymnNumber: number,
+              hymnTitle: title,
             ),
-          );
-        },
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+
+      child: Card(
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 🎵 왼쪽 아이콘
+              SvgPicture.asset(
+                'assets/icon/music.svg',
+                width: 32,
+                height: 32,
+                colorFilter: const ColorFilter.mode(
+                  AppColors.primary,
+                  BlendMode.srcIn,
+                ),
+              ),
+              const SizedBox(width: 22),
+
+              // 🔠 가운데: 번호 + 제목 (항상 왼쪽 정렬)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+
+                  children: [
+                    Text(
+                      "$number장",
+                      style: AppTextStyles.body.copyWith(
+                        height: 1.2,
+                      ),
+                      textAlign: TextAlign.start,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: AppTextStyles.caption.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.start,
+                    ),
+                  ],
+                ),
+              ),
+
+              // 🕒 / 👁 오른쪽 트레일링
+              if (trailing != null) ...[
+                const SizedBox(width: 12),
+                trailing,
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
+
+
 
   // 📌 시간 표시 함수
   String timeAgo(DateTime lastViewed) {
