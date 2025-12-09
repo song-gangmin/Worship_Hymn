@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/text_styles.dart';
-import 'widget/playlist_dialog.dart';
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
+import 'package:worship_hymn/widget/playlist_dialog.dart';
 import 'dart:async';
-import 'score_detail_screen.dart';
+import 'package:worship_hymn/screens/score/score_detail_screen.dart';
 import 'dart:ui' show FontFeature;
 
 
-import 'services/playlist_service.dart';
+import 'package:worship_hymn/services/playlist_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -28,6 +28,7 @@ class BookmarkScreen extends StatefulWidget {
 }
 
 class BookmarkScreenState extends State<BookmarkScreen> {
+  final Set<String> _deletingSongIds = {};
   int selectedPlaylistIndex = 0;
 
   bool _initialPlaylistApplied = false;
@@ -36,7 +37,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   Set<int> selectedItems = {};
 
   late PlaylistService playlistService;
-  String uid = 'test_user';
+  late String uid;
 
   List<Map<String, dynamic>> originalPlaylists = [];
   List<Map<String, dynamic>> editingPlaylists = [];
@@ -45,12 +46,10 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   void initState() {
     super.initState();
     final currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser != null) {
-      uid = currentUser.uid;
-    } else {
-      uid = 'kakao:4424196142';
+    if (currentUser == null) {
+      throw Exception('User must be authenticated');
     }
+    uid = currentUser.uid;
 
     playlistService = PlaylistService(uid: uid);
 
@@ -225,7 +224,15 @@ class BookmarkScreenState extends State<BookmarkScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            List<DocumentSnapshot> songs = songSnap.data!.docs;
+            // 1. 원본 데이터 가져오기
+            final rawDocs = songSnap.data!.docs;
+
+            // 2. 삭제 중인 ID(_deletingSongIds)는 화면 목록에서 제외하고 리스트 생성
+            // (이렇게 해야 삭제 직후 Stream이 아직 업데이트 안 됐을 때도 화면에서 사라짐)
+            final songs = rawDocs
+                .where((doc) => !_deletingSongIds.contains(doc.id))
+                .toList();
+
             if (songs.isEmpty) {
               return const Center(child: Text('곡이 없습니다.'));
             }
@@ -239,7 +246,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                 final moved = songs.removeAt(oldIndex);
                 songs.insert(newIndex, moved);
 
-                // Firestore 저장
+                // Firestore 저장 (순서 변경)
                 for (int i = 0; i < songs.length; i++) {
                   await songs[i].reference.update({'order': i});
                 }
@@ -247,12 +254,14 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                 setState(() {});
               },
               itemBuilder: (_, i) {
-                final data = songs[i].data() as Map<String, dynamic>;
+                final doc = songs[i]; // 현재 문서 객체
+                final data = doc.data() as Map<String, dynamic>;
                 final title = data['title'] ?? '(제목 없음)';
                 final number = (data['number'] ?? 0) as int;
+                final docId = doc.id; // 문서 ID
 
                 return Dismissible(
-                  key: ValueKey(songs[i].id), // ★ 다시 ValueKey 유지해야 스와이프 정상됨
+                  key: ValueKey(docId), // ★ 문서 ID를 키로 사용해야 안전함
                   direction: DismissDirection.endToStart,
                   background: Container(
                     color: Colors.red,
@@ -261,68 +270,79 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                     child: const Icon(Icons.delete, color: Colors.white),
                   ),
                   onDismissed: (_) async {
-                    final removedDoc = songs[i];
-                    final removedNumber = removedDoc['number'];
-
-                    // 🔥 UI에서 즉시 제거
+                    // 🔥 1. UI에서 즉시 안 보이게 처리 (삭제 중 목록에 추가)
                     setState(() {
-                      songs.removeAt(i);
+                      _deletingSongIds.add(docId);
                     });
 
-                    // 🔥 Firestore 삭제
-                    if (selectedPlaylist['name'] == '전체') {
-                      await _deleteSongFromAllPlaylists(removedNumber);
-                    } else {
-                      await playlistService.deleteSongFromPlaylist(
-                        playlistId: selectedPlaylistId,
-                        hymnNumber: removedNumber,
-                      );
+                    // 🔥 2. Firestore 삭제 요청
+                    try {
+                      if (selectedPlaylist['name'] == '전체') {
+                        await _deleteSongFromAllPlaylists(number);
+                      } else {
+                        await playlistService.deleteSongFromPlaylist(
+                          playlistId: selectedPlaylistId,
+                          hymnNumber: number,
+                        );
+                      }
+                      // 성공하면 Stream이 업데이트되면서 자연스럽게 목록에서 빠짐
+                    } catch (e) {
+                      // 실패하면 다시 보이게 복구
+                      if (mounted) {
+                        setState(() {
+                          _deletingSongIds.remove(docId);
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('삭제 중 오류가 발생했습니다.')),
+                        );
+                      }
                     }
                   },
-                    child: Container(
-                        key: ValueKey("tile_$i"),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          border: Border(
-                            bottom: BorderSide(color: Colors.black12, width: 0.5),
+                  child: Container(
+                    // Key를 인덱스 대신 docId로 변경하여 꼬임 방지
+                    key: ValueKey("tile_$docId"),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        bottom: BorderSide(color: Colors.black12, width: 0.5),
+                      ),
+                    ),
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      leading: SizedBox(
+                        width: 40,
+                        child: Text(
+                          number.toString(),
+                          textAlign: TextAlign.left,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w300,
                           ),
                         ),
-                        child: ListTile(
-                            dense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                            leading: SizedBox(
-                              width: 40,
-                              child: Text(
-                                number.toString(),
-                                textAlign: TextAlign.left,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              title,
-                              style: AppTextStyles.body.copyWith(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            trailing: const Icon(Icons.drag_handle,
-                                color: Colors.black54, size: 20),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ScoreDetailScreen(
-                                    hymnNumber: number,
-                                    hymnTitle: title,
-                                  ),
-                                ),
-                              );
-                            },
+                      ),
+                      title: Text(
+                        title,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                      trailing: const Icon(Icons.drag_handle,
+                          color: Colors.black54, size: 20),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ScoreDetailScreen(
+                              hymnNumber: number,
+                              hymnTitle: title,
+                            ),
+                          ),
+                        );
+                      },
                     ),
+                  ),
                 );
               },
             );

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/text_styles.dart';
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class InquiryScreen extends StatefulWidget {

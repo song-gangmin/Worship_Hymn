@@ -5,8 +5,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 
 
-import '../UserRepository.dart';
-import '../auth/resualt_auth.dart';
+import 'package:worship_hymn/repositories/UserRepository.dart';
+import '../auth/result_auth.dart';
 import '../services/user_data_migrator.dart';
 
 class GoogleAuth implements AuthService {

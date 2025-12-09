@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'constants/topic_hymns.dart';
+import 'package:worship_hymn/constants/topic_hymns.dart';
 
 class GenreScroll extends StatelessWidget {
   final void Function(String topic, List<int> hymnList) onTopicSelected;

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'services/playlist_service.dart';
-import 'main_screen.dart';
-import 'constants/text_styles.dart';
-import 'constants/colors.dart';
-import 'widget/playlist_dialog.dart';
+import 'package:worship_hymn/services/playlist_service.dart';
+import 'package:worship_hymn/screens/main/main_screen.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/widget/playlist_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'recent_service.dart';
+import 'package:worship_hymn/services/recent_service.dart';
 import 'package:photo_view/photo_view.dart';
-import 'global_stats_service.dart';
+import 'package:worship_hymn/services/global_stats_service.dart';
+import 'package:worship_hymn/constants/title_hymns.dart';
 
 class ScoreDetailScreen extends StatefulWidget {
   final int hymnNumber;
@@ -46,15 +47,26 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
 
   String get hymnNumberLabel => '${_current}장';
 
-  String get hymnTitle => widget.hymnTitle;
+  String get _currentHymnTitle {
+    // 1. 전체 문자열 가져오기 (예: "1장 만복의 근원 하나님")
+    final raw = hymnTitles[_current - 1];
 
+    // 2. 첫 번째 공백 찾기
+    final splitIndex = raw.indexOf(' ');
+
+    // 3. 공백 다음부터 끝까지 자르기 (예: "만복의 근원 하나님")
+    return raw.substring(splitIndex + 1);
+  }
   @override
   void initState() {
     super.initState();
     _current = widget.hymnNumber.clamp(_minHymn, _maxHymn);
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    uid = currentUser?.uid ?? 'kakao:4424196142';
+    if (currentUser == null) {
+      throw Exception('User must be authenticated');
+    }
+    uid = currentUser.uid;
     playlistService = PlaylistService(uid: uid);
     recentService = RecentService(uid: uid);
     globalService = GlobalStatsService();
@@ -198,7 +210,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
 
     await ref.set({
       'number': _current,
-      'title': hymnTitle,
+      'title': _currentHymnTitle,
       'viewedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -217,7 +229,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
       if (!snap.exists) {
         txn.set(ref, {
           'number': _current,
-          'title': hymnTitle,
+          'title': _currentHymnTitle,
           'weeklyCount': 1,
           'dailyHistory': {dateKey: 1},
           'lastUpdated': FieldValue.serverTimestamp(),
@@ -269,7 +281,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
       await playlistService.addSongSmart(
         playlistId: playlistId,
         hymnNumber: _current,
-        title: hymnTitle,
+        title: _currentHymnTitle,
       );
 
       if (!mounted) return;
@@ -439,7 +451,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                       child: GestureDetector(
                         onTap: () {
                           Navigator.pop(context);
-                          _showCreatePlaylistDialog(context);
+                          _showCreatePlaylistDialog();
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -483,9 +495,8 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   ///  🔧 새 즐겨찾기 생성
-  void _showCreatePlaylistDialog(BuildContext context) {
+  void _showCreatePlaylistDialog() {
     final controller = TextEditingController();
-
     showDialog(
       context: context,
       builder: (ctx) => PlaylistDialog(
@@ -499,10 +510,11 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
           Navigator.pop(ctx);
 
           try {
-            final newId = await playlistService.addPlaylist(name);
+            final newId = await playlistService.addPlaylist(name.trim());
             await _addSongSmart(newId, name);
           } on StateError catch (e) {
             if (e.message == 'DUPLICATE_PLAYLIST_NAME') {
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('이미 동일한 즐겨찾기가 있습니다.'),
@@ -512,6 +524,13 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
             } else {
               rethrow;
             }
+          }
+          catch (e) {
+            // 그 외 에러
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('오류가 발생했습니다.')),
+            );
           }
         },
       ),

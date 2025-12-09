@@ -7,6 +7,42 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:800123758723:android:38583dbf05a9c6392393b6",
+        "android_client_info": {
+          "package_name": "com.worship.hymn"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "800123758723-bqklphkptd2t5cpahu3kfocickl58rbp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaSHpVAEUoIvnfN4qG7IvjljiqoS-bJDI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "800123758723-bqklphkptd2t5cpahu3kfocickl58rbp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "800123758723-21ukafthakhir6sa24h3fm7ormg71j1f.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.worship.hymn.worshipHymn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:800123758723:android:ad7a3a813c49007c2393b6",
         "android_client_info": {
           "package_name": "com.worship.hymn.worship_hymn"

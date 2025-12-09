@@ -1,4 +1,4 @@
-package com.worship.hymn.worship_hymn
+package com.worship.hymn
 
 import io.flutter.embedding.android.FlutterActivity
 

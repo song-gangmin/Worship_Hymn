@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/text_styles.dart';
-import '../constants/title_hymns.dart'; // HymnInfo, allHymns
-import 'score_detail_screen.dart';
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
+import 'package:worship_hymn/constants/title_hymns.dart'; // HymnInfo, allHymns
+import 'package:worship_hymn/screens/score/score_detail_screen.dart';
 import 'dart:ui' show FontFeature;
 
 class SearchScreen extends StatefulWidget {
@@ -81,7 +81,7 @@ class _SearchScreenState extends State<SearchScreen> {
               controller: _controller,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: '장, 제목, 가사 검색',
+                hintText: '장, 제목 등',
                 hintStyle: AppTextStyles.caption,
                 filled: true,
                 fillColor: Colors.white,

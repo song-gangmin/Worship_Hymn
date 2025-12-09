@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'constants/text_styles.dart';
-import 'constants/colors.dart';
-import 'score_detail_screen.dart';
-import 'recent_service.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/screens/score/score_detail_screen.dart';
+import 'package:worship_hymn/services/recent_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class RecentAllScreen extends StatelessWidget {
@@ -127,6 +127,7 @@ class RecentAllScreen extends StatelessWidget {
                       style: AppTextStyles.caption.copyWith(
                         height: 1.2,
                         fontSize: 14,
+                        color: Colors.black54,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,

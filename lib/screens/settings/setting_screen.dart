@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/text_styles.dart';
-import 'section1_screen.dart';
-import 'auth/logout_helper.dart';
-import 'inquiry_screen.dart';
-
-
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
+import 'package:worship_hymn/screens/login/section1_screen.dart';
+import 'package:worship_hymn/auth/logout_helper.dart';
+import 'package:worship_hymn/screens/settings/inquiry_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-import 'widget/playlist_dialog.dart';
+import 'package:worship_hymn/widget/playlist_dialog.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key,});
@@ -174,7 +171,7 @@ class SettingScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      await appLogout(context);
+      await appLogout();
     }
   }
 }

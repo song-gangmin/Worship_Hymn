@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'auth/resualt_auth.dart';
+import 'package:worship_hymn/auth/result_auth.dart';
 
 class UserRepository {
   final _col = FirebaseFirestore.instance.collection('users');

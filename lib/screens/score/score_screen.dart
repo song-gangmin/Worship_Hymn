@@ -1,12 +1,12 @@
 import 'dart:ui' show FontFeature; // 🔹 숫자 폭 고정용
 
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/title_hymns.dart';
-import '../constants/text_styles.dart';
-import 'score_detail_screen.dart';
-import 'main_screen.dart';
-import 'search_screen.dart';
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/constants/title_hymns.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
+import 'package:worship_hymn/screens/score/score_detail_screen.dart';
+import 'package:worship_hymn/screens/main/main_screen.dart';
+import 'package:worship_hymn/screens/search/search_screen.dart';
 
 /// [grouped]이 true면 구간(1~100 …)별 카드 + 접/펼침.
 /// false면 단일 리스트로 바로 출력 (장르별 진입 시 사용).
@@ -121,7 +121,7 @@ class ScoreScreenState extends State<ScoreScreen> {
             const Icon(Icons.search, color: Colors.black),
             const SizedBox(width: 8),
             Text(
-              '장, 제목, 가사 등',
+              '장, 제목 등',
               style: AppTextStyles.caption,
             ),
           ],
@@ -284,6 +284,8 @@ class ScoreScreenState extends State<ScoreScreen> {
                   fontSize: 17,
                   fontWeight: FontWeight.w500,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

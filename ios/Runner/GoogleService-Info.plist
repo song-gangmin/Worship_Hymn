@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4.apps.googleusercontent.com</string>
+	<string>800123758723-e44d1tepihd7d9vamhol89bl1ba78veo.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.800123758723-vsj9al4l2llgpg86kmd9uu4932ktuqd4</string>
+	<string>com.googleusercontent.apps.800123758723-e44d1tepihd7d9vamhol89bl1ba78veo</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>800123758723-9lborot1bag7hq39fltj6417nsuj6dos.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,11 +15,11 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.worship.hymn.worshiphymn</string>
+	<string>com.worship.hymn</string>
 	<key>PROJECT_ID</key>
 	<string>worship-hymn</string>
 	<key>STORAGE_BUCKET</key>
-	<string>worship-hymn.firebasestorage.appspot.com</string>
+	<string>worship-hymn.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:800123758723:ios:4dd140685e2e40d72393b6</string>
+	<string>1:800123758723:ios:96b1184fb820300a2393b6</string>
 </dict>
 </plist>

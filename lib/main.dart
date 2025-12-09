@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'section0_screen.dart';
-import 'section1_screen.dart';
-import 'main_screen.dart';
+import 'screens/splash/section0_screen.dart';
+import 'screens/login/section1_screen.dart';
+import 'screens/main/main_screen.dart';
 import 'constants/colors.dart';
 import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'dart:async';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart'; // FlutterFire CLI로 자동 생성된 파일
-
-
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,65 +32,12 @@ Future<void> main() async {
       rethrow;
     }
   }
-  await _ensureUserSignedIn();
   KakaoSdk.init(nativeAppKey: '964ca6284360a7db3f8400c26a5d4be9');
 
   // ✅ Firestore 캐시 설정 (초기화 후)
-  FirebaseFirestore.instance.settings =
-  const Settings(persistenceEnabled: true);
-
-  // ✅ 테스트용 익명 로그인 (권한 문제 방지)
-  if (FirebaseAuth.instance.currentUser == null) {
-    await FirebaseAuth.instance.signInAnonymously();
-    debugPrint('👤 Signed in anonymously for test');
-  }
-
-  // ✅ Firestore 연결 테스트
-  await testFirestoreConnection();
+  FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
 
   runApp(const MyApp());
-}
-Future<void> _ensureUserSignedIn() async {
-  final auth = FirebaseAuth.instance;
-
-  // 이미 로그인(카카오/구글/이메일 등) 되어 있으면 그대로 사용
-  if (auth.currentUser != null) return;
-
-  try {
-    await auth.signInAnonymously();
-  } catch (e) {
-    // 오프라인이거나 에러 나도 앱은 그냥 켜지게 두고, 나중에 다시 시도 가능
-    debugPrint('익명 로그인 실패: $e');
-  }
-}
-
-Future<void> testFirestoreConnection() async {
-  debugPrint('🔥 testFirestoreConnection() start');
-  try {
-    final ref = await FirebaseFirestore.instance
-        .collection('test_connection')
-        .add({
-      'platform': 'ios',
-      'tsClient': Timestamp.now(),
-      'tsServer': FieldValue.serverTimestamp(),
-    })
-        .timeout(const Duration(seconds: 5));
-
-    final snap = await ref
-        .get(const GetOptions(source: Source.server));
-
-    debugPrint('✅ Firestore ok | doc=${ref.id} | serverTs=${snap.data()?['tsServer']}');
-  } on FirebaseException catch (e, st) {
-    debugPrint('❌ Firestore FirebaseException: ${e.code} - ${e.message}');
-    debugPrint(st.toString());
-  } on TimeoutException catch (_) {
-    debugPrint('⏱️ Firestore request timed out');
-  } catch (e, st) {
-    debugPrint('❌ Firestore unknown error: $e');
-    debugPrint(st.toString());
-  } finally {
-    debugPrint('🏁 testFirestoreConnection() end');
-  }
 }
 
 class MyApp extends StatelessWidget {
@@ -108,10 +52,9 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: FutureBuilder(
-        // 최소 1초 기다리기
+        // section1_screen 최소 1초 기다리기
         future: Future.delayed(const Duration(seconds: 1)),
         builder: (context, snapDelay) {
-          // 아직 1초가 안 지났으면 Section0Screen 유지
           if (snapDelay.connectionState != ConnectionState.done) {
             return const Section0Screen();
           }
@@ -120,30 +63,25 @@ class MyApp extends StatelessWidget {
           return StreamBuilder<User?>(
             stream: FirebaseAuth.instance.authStateChanges(),
             builder: (ctx, snap) {
+
+              // 🔴 디버깅용 로그 추가
+              if (snap.connectionState == ConnectionState.active) {
+                print(">>> Main Stream 상태 변경됨. User: ${snap.data}");
+              }
+
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Section0Screen();
               }
 
               final user = snap.data;
+
+              // 유저가 없으면 로그인 화면 유지
               if (user == null) {
                 return const Section1Screen();
               }
 
-              // Firestore 사용자 문서 로딩
-              return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .snapshots(),
-                builder: (context, snap2) {
-                  if (!snap2.hasData) {
-                    return const Section0Screen();
-                  }
-
-                  final data = snap2.data?.data() ?? {};
-                  return MainScreen();
-                },
-              );
+              print(">>> 유저 확인됨! MainScreen으로 이동");
+              return MainScreen();
             },
           );
         },

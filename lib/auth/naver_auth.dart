@@ -4,8 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 
-import '../UserRepository.dart';
-import '../auth/resualt_auth.dart';
+import 'package:worship_hymn/repositories//UserRepository.dart';
+import '../auth/result_auth.dart';
 import '../services/user_data_migrator.dart';
 
 class NaverAuth implements AuthService {

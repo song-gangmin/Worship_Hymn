@@ -6,8 +6,8 @@ import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:kakao_flutter_sdk_auth/kakao_flutter_sdk_auth.dart';
 
 import '../services/user_data_migrator.dart';
-import '../UserRepository.dart';
-import '../auth/resualt_auth.dart';
+import 'package:worship_hymn/repositories//UserRepository.dart';
+import '../auth/result_auth.dart';
 
 class KakaoAuth implements AuthService {
   @override

@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
-import '../constants/colors.dart';
-import '../constants/text_styles.dart';
-import 'genre_scroll.dart';
-import 'main_screen.dart';
-import 'score_detail_screen.dart';
-import 'search_screen.dart';
-import 'constants/title_hymns.dart';
-
-// 서비스
-import 'recent_service.dart';
-import 'global_stats_service.dart';
-
+import 'package:worship_hymn/constants/colors.dart';
+import 'package:worship_hymn/constants//text_styles.dart';
+import 'package:worship_hymn/widget/genre_scroll.dart';
+import 'package:worship_hymn/screens/main/main_screen.dart';
+import 'package:worship_hymn/screens/score/score_detail_screen.dart';
+import 'package:worship_hymn/screens/search/search_screen.dart';
+import 'package:worship_hymn/constants/title_hymns.dart';
+import 'package:worship_hymn/services/recent_service.dart';
+import 'package:worship_hymn/services/global_stats_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'RecentAllScreen.dart';
+import 'package:worship_hymn/screens/home/RecentAllScreen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 
@@ -32,7 +29,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    uid = FirebaseAuth.instance.currentUser?.uid ?? "kakao:4424196142";
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception('User must be authenticated');
+    }
+    uid = currentUser.uid;
 
     recentService = RecentService(uid: uid);
     globalService = GlobalStatsService();
@@ -79,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(Icons.search, color: Colors.black),
                     const SizedBox(width: 8),
                     Text(
-                      '장, 제목, 가사 등',
+                      '장, 제목 등',
                       style: AppTextStyles.caption,
                     ),
                   ],
@@ -128,8 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 32),
 
-            // ⭐ 이번 주 제일 많이 찾은 찬송가
-            Text('이번 주 제일 많이 찾은 찬송가', style: AppTextStyles.sectionTitle),
+            // ⭐ 이번 주 인기 찬송가
+            Text('이번 주 인기 찬송가 TOP 3', style: AppTextStyles.sectionTitle),
             const SizedBox(height: 12),
 
             _buildWeeklyTop3(),
@@ -316,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: AppTextStyles.caption.copyWith(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
+                        color: Colors.black54,
                         height: 1.2,
                       ),
                       maxLines: 1,
