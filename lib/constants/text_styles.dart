@@ -44,4 +44,7 @@ class AppTextStyles {
     color: AppColors.primary,
     height: 1.5,
   );
+  static const TextStyle basic = TextStyle(
+    fontWeight: FontWeight.w400,
+  );
 }

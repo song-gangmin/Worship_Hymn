@@ -43,7 +43,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   late RecentService recentService;
   late GlobalStatsService globalService;
 
-  String get _assetPath => 'assets/scores/page_$_current.png';
+  String get _assetPath => 'assets/scores/page_$_current.webp';
 
   String get hymnNumberLabel => '${_current}장';
 
@@ -586,7 +586,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                 backgroundDecoration: const BoxDecoration(
                   color: Colors.white,
                 ),
-                imageProvider: AssetImage('assets/scores/page_$_current.png'),
+                imageProvider: AssetImage('assets/scores/page_$_current.webp'),
                 minScale: PhotoViewComputedScale.contained,          // 화면에 꽉 차는 기본 배율
                 maxScale: PhotoViewComputedScale.contained * 4.0,    // 최대 4배 확대
               ),

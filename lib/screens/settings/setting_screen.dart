@@ -86,7 +86,7 @@ class SettingScreen extends StatelessWidget {
                     const CircleAvatar(
                       backgroundColor: AppColors.background,
                       radius: 28,
-                      child: Icon(Icons.person, size: 34),
+                      child: Icon(Icons.person, size: 34, color: AppColors.primary),
                     ),
                     const SizedBox(width: 20),
                     Column(
