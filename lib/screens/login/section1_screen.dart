@@ -24,7 +24,7 @@ class Section1Screen extends StatelessWidget {
               // 로고 + 텍스트
               Image.asset('assets/image/login_screen.png', width: 380,),
               const SizedBox(height: 32),
-              const Text('"하나님은 영이시니 예배하는 자가 영과 진리로 예배할 지니라"\n- 요 4:24 -',
+              const Text('"하나님은 영이시니 예배하는 자가 영과 진리로 예배할지니라"\n- 요 4:24 -',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.gold, fontSize: 13, height: 1.5),
               ),

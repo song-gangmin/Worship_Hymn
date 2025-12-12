@@ -15,4 +15,7 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <string name="client_id">uCalTrNx7kUnkKbdsV7L</string>
+    <string name="client_secret">AdDC6nLXyg</string>
+    <string name="client_name">예배 찬송가</string>
 </resources>

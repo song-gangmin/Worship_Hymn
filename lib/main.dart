@@ -10,6 +10,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart'; // FlutterFire CLI로 자동 생성된 파일
 
+import 'package:provider/provider.dart';
+import 'providers/font_provider.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -37,7 +40,14 @@ Future<void> main() async {
   // ✅ Firestore 캐시 설정 (초기화 후)
   FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FontProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -66,7 +76,7 @@ class MyApp extends StatelessWidget {
             builder: (ctx, snap) {
 
               // 🔴 디버깅용 로그 추가
-              if (snap.connectionState == ConnectionState.active) {
+                if (snap.connectionState == ConnectionState.active) {
                 print(">>> Main Stream 상태 변경됨. User: ${snap.data}");
               }
 

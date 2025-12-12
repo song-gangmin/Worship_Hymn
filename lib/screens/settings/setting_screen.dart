@@ -7,6 +7,7 @@ import 'package:worship_hymn/screens/settings/inquiry_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:worship_hymn/widget/playlist_dialog.dart';
+import 'package:worship_hymn/screens/settings/font_screen.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key,});
@@ -128,6 +129,14 @@ class SettingScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => const InquiryScreen(),
+                      ),
+                    );
+                  }),
+                  _SettingItem(title: '폰트 설정', onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FontScreen(),
                       ),
                     );
                   }),
