@@ -8,6 +8,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:worship_hymn/widget/playlist_dialog.dart';
 import 'package:worship_hymn/screens/settings/font_screen.dart';
+import 'package:worship_hymn/screens/settings/display_screen.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:worship_hymn/screens/settings/account_screen.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key,});
@@ -15,7 +18,8 @@ class SettingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final isGuest = (user == null) || (user.isAnonymous);
+    final bool isGuest = (user == null) || (user.isAnonymous);
+    debugPrint(">>> SettingScreen: user=${user?.uid}, isAnonymous=${user?.isAnonymous}");
 
     // 🔹 게스트(익명)인 경우: 스트림 안 타고 바로 "로그인 하세요" UI
     if (isGuest) {
@@ -39,8 +43,9 @@ class SettingScreen extends StatelessWidget {
         }
 
         final data = snap.data!.data() ?? {};
-        final name = data['name'] ?? user.displayName ?? '';
-        final email = data['email'] ?? user.email ?? '';
+        debugPrint(">>> SettingScreen Firestore data: $data");
+        final name = data['name'] ?? user.displayName ?? '이름 없음';
+        final email = data['email'] ?? user.email ?? '이메일 정보 없음';
 
         return _buildScreen(
           name: name,
@@ -59,107 +64,128 @@ class SettingScreen extends StatelessWidget {
     required BuildContext context,
   }) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.getBackground(context),
         elevation: 0,
-        title: const Text('설정', style: AppTextStyles.headline),
+        title: Text('설정', style: AppTextStyles.headline(context)),
         centerTitle: false,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
 
-          // ─── 기존 네 UI 100% 그대로 붙여넣기 ───
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Card(
-              color: Colors.white,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 1,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      backgroundColor: AppColors.background,
-                      radius: 28,
-                      child: Icon(Icons.person, size: 34, color: AppColors.primary),
-                    ),
-                    const SizedBox(width: 20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name,
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          email,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+        // 🔹 상단 프로필 섹션 (카드 뷰 복구 + 터치 그림자 제거)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Card(
+            color: AppColors.getSurface(context),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0.5, // 은은한 그림자 유지
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            clipBehavior: Clip.antiAlias, // 카드 모서리에 맞춰 클릭 효과 제한
+            child: InkWell(
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              onTap: () {
+                if (signedIn) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AccountScreen()),
+                  );
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const Section1Screen()),
+                  );
+                }
+              },
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                leading: CircleAvatar(
+                  radius: 25,
+                  backgroundColor: Colors.grey[200],
+                  child: Icon(Icons.person, color: AppColors.gold, size: 30),
                 ),
+                title: Text(name, style: AppTextStyles.headline(context).copyWith(fontSize: 18)),
+                subtitle: Text(email, style: AppTextStyles.body(context).copyWith(fontSize: 13, color: Colors.grey)),
               ),
             ),
           ),
+        ),
 
           Expanded(
-            child: Container(
-              color: AppColors.background,
-              child: Column(
-                children: [
-                  //_SettingItem(title: '프로필', onTap: () {}),
-                  //_SettingItem(title: '계정', onTap: () {}),
-                  //_SettingItem(title: '화면', onTap: () {}),
-                  const SizedBox(height: 20),
-                  _SettingItem(title: '문의', onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const InquiryScreen(),
-                      ),
-                    );
-                  }),
-                  _SettingItem(title: '폰트 설정', onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const FontScreen(),
-                      ),
-                    );
-                  }),
-                  const _SettingItem(
-                    title: '버전',
-                    trailing: Text('1.1.1', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                  ),
-                  _SettingItem(
-                    title: signedIn ? '로그아웃' : '로그인',
-                    isDestructive: signedIn,
-                    onTap: () async {
-                      if (signedIn) {
-                        await _showLogoutDialog(context);
-                      } else {
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const SizedBox(height: 10),
+                // 🔹 설정 그룹 1 (화면, 글자)
+                Container(
+                  color: AppColors.getSurface(context),
+                  child: Column(
+                    children: [
+                      _SettingItem(title: '화면', onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const Section1Screen()),
+                          MaterialPageRoute(builder: (context) => const DisplayScreen()),
                         );
-                      }
-                    },
-                  )
-                ],
-              ),
+                      }),
+                      const SizedBox(height:4),
+                      _SettingItem(title: '글자', onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const FontScreen()),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // 🔹 설정 그룹 2 (문의, 버전, 로그인/로그아웃)
+                Container(
+                  color: AppColors.getSurface(context),
+                  child: Column(
+                    children: [
+                      _SettingItem(title: '문의', onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const InquiryScreen()),
+                        );
+                      }),
+                      const SizedBox(height:4),
+                      FutureBuilder<PackageInfo>(
+                        future: PackageInfo.fromPlatform(),
+                        builder: (context, snapshot) {
+                          String versionText = '...';
+                          if (snapshot.hasData) versionText = snapshot.data!.version;
+                          return _SettingItem(
+                            title: '버전',
+                            trailing: Text(versionText, style: TextStyle(fontSize: AppTextStyles.font(context).applySize(16), color: Colors.grey)),
+                          );
+                        },
+                      ),
+                      const SizedBox(height:4),
+                      _SettingItem(
+                        title: signedIn ? '로그아웃' : '로그인',
+                        isDestructive: signedIn,
+                        onTap: () async {
+                          if (signedIn) {
+                            await _showLogoutDialog(context);
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const Section1Screen()),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ],
@@ -201,8 +227,11 @@ class _SettingItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textStyle = isDestructive
-        ? const TextStyle(fontSize: 16, color: Colors.red)
-        : const TextStyle(fontSize: 16, color: Colors.black);
+        ? TextStyle(fontSize: AppTextStyles.font(context).applySize(16), color: Colors.red)
+        : TextStyle(
+            fontSize: AppTextStyles.font(context).applySize(16),
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+          );
 
     return ListTile(
       title: Text(title, style: textStyle),

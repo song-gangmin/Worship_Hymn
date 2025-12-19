@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:worship_hymn/constants/colors.dart';
 import 'package:worship_hymn/constants/text_styles.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class InquiryScreen extends StatefulWidget {
   const InquiryScreen({super.key});
@@ -38,14 +37,14 @@ class _InquiryScreenState extends State<InquiryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.getBackground(context),
         elevation: 0,
         centerTitle: true,
         title: Text(
           '문의',
-          style: AppTextStyles.headline.copyWith(fontSize: 18),
+          style: AppTextStyles.headline(context).copyWith(fontSize: 18),
         ),
       ),
       body: SingleChildScrollView(
@@ -54,9 +53,13 @@ class _InquiryScreenState extends State<InquiryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 10),
-            const Text(
+            Text(
               "안녕하세요\n무엇을 도와드릴까요?",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              ),
             ),
             const SizedBox(height: 28),
 
@@ -78,7 +81,7 @@ class _InquiryScreenState extends State<InquiryScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text("@"),
+                Text("@", style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: _buildTextField(
@@ -170,7 +173,7 @@ class _InquiryScreenState extends State<InquiryScreen> {
               height: 52,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -250,10 +253,10 @@ class _InquiryScreenState extends State<InquiryScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.getSurface(context),
           title: Text(
             '문의가 접수되었습니다!',
-            style: AppTextStyles.sectionTitle,
+            style: AppTextStyles.sectionTitle(context),
           ),
           content: SizedBox(
             width: 300,
@@ -261,10 +264,10 @@ class _InquiryScreenState extends State<InquiryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               child: Text(
                 '관리자가 확인 후 입력하신 이메일로 답변 드리겠습니다.\n($email)',
-                style: AppTextStyles.body.copyWith(
+                style: AppTextStyles.body(context).copyWith(
                   fontSize: 15,
                   height: 1.5,
-                  color: Colors.black87,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
                 ),
                 textAlign: TextAlign.left,
               ),
@@ -281,9 +284,9 @@ class _InquiryScreenState extends State<InquiryScreen> {
                 },
                 child: Text(
                   '확인',
-                  style: AppTextStyles.body.copyWith(
+                  style: AppTextStyles.body(context).copyWith(
                     fontSize: 14,
-                    color: AppColors.primary,
+                    color: Theme.of(context).primaryColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -303,10 +306,10 @@ class _InquiryScreenState extends State<InquiryScreen> {
     return RichText(
       text: TextSpan(
         text: text,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 16,
-          color: Colors.black, // 기본 글자색
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // 기본 글자색
         ),
         children: required
             ? const [
@@ -350,7 +353,7 @@ class _InquiryScreenState extends State<InquiryScreen> {
     final focusedBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(
-        color: isError ? Colors.red : AppColors.primary,
+        color: isError ? Colors.red : Theme.of(context).primaryColor,
       ),
     );
 
@@ -358,7 +361,7 @@ class _InquiryScreenState extends State<InquiryScreen> {
       hintText: hint,
       counterText: "",
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AppColors.getSurface(context),
       contentPadding:
       const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       enabledBorder: baseBorder,

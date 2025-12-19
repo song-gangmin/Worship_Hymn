@@ -29,15 +29,16 @@ class FirebaseAuthBridge {
       } on FirebaseAuthException catch (e) {
         if (e.code == 'credential-already-in-use') {
           // ❗ 이미 이 소셜 계정으로 가입된 계정이 있을 때
+          // 🔥 1) 현재 유저(익명) 데이터 미리 수집
+          final Map<String, dynamic> collectedData = await _migrator.collectData(anonUid);
+
+          // 2) 소셜 계정으로 로그인 (세션 전환)
           final signInResult = await _auth.signInWithCredential(credential);
           final newUser = signInResult.user;
 
           if (newUser != null) {
-            // 🔥 로컬(익명 uid)의 데이터 → 서버 계정(uid)로 복사
-            await _migrator.migrateAnonymousData(
-              fromUid: anonUid,
-              toUid: newUser.uid,
-            );
+            // 🔥 3) 새 계정으로 마이그레이션 적용
+            await _migrator.applyMigration(newUser.uid, collectedData);
           }
           return newUser;
         } else {

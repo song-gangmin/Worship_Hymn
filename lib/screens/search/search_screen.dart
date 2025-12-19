@@ -3,7 +3,6 @@ import 'package:worship_hymn/constants/colors.dart';
 import 'package:worship_hymn/constants/text_styles.dart';
 import 'package:worship_hymn/constants/title_hymns.dart'; // HymnInfo, allHymns
 import 'package:worship_hymn/screens/score/score_detail_screen.dart';
-import 'dart:ui' show FontFeature;
 
 class SearchScreen extends StatefulWidget {
   final List<HymnInfo> hymns;
@@ -38,6 +37,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _onSearchChanged() {
     final q = _controller.text.trim().toLowerCase();
+    final qNormalized = q.replaceAll(' ', '');
 
     setState(() {
       _query = q;
@@ -47,11 +47,11 @@ class _SearchScreenState extends State<SearchScreen> {
       } else {
         _filtered = widget.hymns.where((h) {
           final numStr = h.number.toString();
-          final title = h.title.toLowerCase();
-          final lyrics = h.lyrics.toLowerCase();
-          return numStr.contains(_query) ||
-              title.contains(_query) ||
-              lyrics.contains(_query);
+          final title = h.title.toLowerCase().replaceAll(' ', '');
+          final lyrics = h.lyrics.toLowerCase().replaceAll(' ', '');
+          return numStr.contains(q) ||
+              title.contains(qNormalized) ||
+              lyrics.contains(qNormalized);
         }).toList();
       }
     });
@@ -60,16 +60,16 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.getBackground(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         // ✅ 가운데 검색 아이콘만 표시
         title: Text(
           '검색',                              // ✅ 가운데에 "검색" 텍스트
-          style: AppTextStyles.headline.copyWith(fontSize: 18)
+          style: AppTextStyles.headline(context).copyWith(fontSize: 18)
         ),
       ),
       body: Column(
@@ -82,10 +82,13 @@ class _SearchScreenState extends State<SearchScreen> {
               autofocus: true,
               decoration: InputDecoration(
                 hintText: '장, 제목 등',
-                hintStyle: AppTextStyles.caption,
+                hintStyle: AppTextStyles.caption(context),
                 filled: true,
-                fillColor: Colors.white,
-                prefixIcon: const Icon(Icons.search, color: Colors.black),
+                fillColor: AppColors.getSurface(context),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -115,11 +118,11 @@ class _SearchScreenState extends State<SearchScreen> {
               padding:
               const EdgeInsets.fromLTRB(16, 4, 16, 16),
               itemCount: _filtered.length,
-              separatorBuilder: (_, __) => const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 0),
+              separatorBuilder: (_, __) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0),
                 child: Divider(
                   height: 0.5,
-                  color: Colors.black12,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black12,
                 ),
               ),
               itemBuilder: (context, index) {
@@ -167,7 +170,7 @@ class _SearchScreenState extends State<SearchScreen> {
             Expanded(
               child: Text(
                 hymn.title,
-                style: AppTextStyles.body.copyWith(
+                style: AppTextStyles.body(context).copyWith(
                   fontSize: 17,
                   fontWeight: FontWeight.w500,
                 ),

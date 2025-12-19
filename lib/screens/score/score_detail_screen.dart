@@ -8,6 +8,7 @@ import 'package:worship_hymn/widget/playlist_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:worship_hymn/services/recent_service.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:worship_hymn/services/global_stats_service.dart';
 import 'package:worship_hymn/constants/title_hymns.dart';
 
@@ -30,6 +31,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   static const int _maxHymn = 588;
 
   late int _current;
+  late PageController _pageController;
 
   bool _controlsVisible = true;
   bool _isFullscreen = false;
@@ -61,6 +63,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   void initState() {
     super.initState();
     _current = widget.hymnNumber.clamp(_minHymn, _maxHymn);
+    _pageController = PageController(initialPage: _current - 1);
 
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -252,26 +255,30 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
 
   void _toggleControls() => setState(() => _controlsVisible = !_controlsVisible);
 
+  void _onPageChanged(int index) {
+    setState(() {
+      _current = index + 1;
+    });
+    _loadBookmarkState();
+    _recordView();
+    _recordUserRecent();
+  }
+
   void _nextPage() {
     if (_current < _maxHymn) {
-      setState(() {
-        _current++;
-      });
-      _loadBookmarkState();
-      _recordView();
-      _recordUserRecent();
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
   void _prevPage() {
     if (_current > _minHymn) {
-      setState(() {
-        _current--;
-      });
-
-      _loadBookmarkState();
-      _recordView();
-      _recordUserRecent();
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -294,7 +301,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
             SnackBar(
               content: Text('"$playlistName"에 곡이 추가되었습니다.'),
               behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.primary,
+              backgroundColor: Theme.of(context).primaryColor,
             ),
           );
         });
@@ -381,9 +388,9 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
 
             return Container(
               height: totalHeight,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              decoration: BoxDecoration(
+                color: AppColors.getSurface(context),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
                 children: [
@@ -405,7 +412,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Text(
                         '즐겨찾기에 1곡 추가',
-                        style: AppTextStyles.sectionTitle.copyWith(fontSize: 22),
+                        style: AppTextStyles.sectionTitle(context).copyWith(fontSize: 22),
                       ),
                     ),
                   ),
@@ -422,16 +429,16 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                         return ListTile(
                           title: Text(
                             p['name'],
-                            style: AppTextStyles.body.copyWith(
+                            style: AppTextStyles.body(context).copyWith(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                           subtitle: Text(
                             '${p['count'] ?? 0}곡',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600],
                             ),
                           ),
                           onTap: () async {
@@ -457,7 +464,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            color: Theme.of(context).primaryColor,
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
@@ -474,7 +481,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
                               const SizedBox(width: 6),
                               Text(
                                 '새 즐겨찾기',
-                                style: AppTextStyles.sectionTitle.copyWith(
+                                style: AppTextStyles.sectionTitle(context).copyWith(
                                   fontSize: 15,
                                   color: Colors.white,
                                 ),
@@ -544,11 +551,11 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     final appBar = _isFullscreen
         ? null
         : AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0.5,
+          backgroundColor: AppColors.getSurface(context),
+          elevation: 0,
           centerTitle: true,
           // 🔹 제목: "302장" 형식
-          title: Text(hymnNumberLabel, style: AppTextStyles.sectionTitle),
+          title: Text(hymnNumberLabel, style: AppTextStyles.sectionTitle(context)),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new),
             onPressed: () => Navigator.pop(context),
@@ -557,7 +564,9 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
             IconButton(
               icon: Icon(
                 _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                color: _isBookmarked ? AppColors.primary : Colors.black87,
+                color: _isBookmarked 
+                    ? Theme.of(context).primaryColor 
+                    : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
               ),
               onPressed: () async {
                 if (_isBookmarked) {
@@ -573,22 +582,33 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
         );
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.getBackground(context),
       appBar: appBar,
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _toggleControls, // 🔥 화면 어디든 탭하면 토글 온/오프
         child: Stack(
           children: [
-            // 🔍 확대 가능한 악보
+            // 🔍 확대 가능한 악보 (갤러리 형태)
             Positioned.fill(
-              child: PhotoView(
-                backgroundDecoration: const BoxDecoration(
-                  color: Colors.white,
+              child: PhotoViewGallery.builder(
+                scrollPhysics: const BouncingScrollPhysics(),
+                builder: (BuildContext context, int index) {
+                  return PhotoViewGalleryPageOptions(
+                    imageProvider: AssetImage('assets/scores/page_${index + 1}.webp'),
+                    minScale: PhotoViewComputedScale.contained,
+                    maxScale: PhotoViewComputedScale.contained * 4.0,
+                  );
+                },
+                itemCount: _maxHymn,
+                loadingBuilder: (context, event) => const Center(
+                  child: CircularProgressIndicator(),
                 ),
-                imageProvider: AssetImage('assets/scores/page_$_current.webp'),
-                minScale: PhotoViewComputedScale.contained,          // 화면에 꽉 차는 기본 배율
-                maxScale: PhotoViewComputedScale.contained * 4.0,    // 최대 4배 확대
+                backgroundDecoration: BoxDecoration(
+                  color: AppColors.getBackground(context),
+                ),
+                pageController: _pageController,
+                onPageChanged: _onPageChanged,
               ),
             ),
 

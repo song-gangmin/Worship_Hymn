@@ -44,25 +44,25 @@ class GoogleAuth implements AuthService {
     jsonDecode(resp.body)['firebaseToken'] as String;
 
     // Firebase 로그인
-// 🔥 1) 현재 유저(익명일 수 있음) 보관
+    // 🔥 1) 현재 유저(익명일 수 있음) 데이터 미리 수집
     final authInstance = fb.FirebaseAuth.instance;
     final prevUser = authInstance.currentUser;
-    final String? anonUid =
-    (prevUser != null && prevUser.isAnonymous) ? prevUser.uid : null;
+    Map<String, dynamic>? migratedData;
+    if (prevUser != null && prevUser.isAnonymous) {
+      debugPrint("[GoogleAuth] collecting anonymous data for migration...");
+      migratedData = await UserDataMigrator().collectData(prevUser.uid);
+    }
 
     // 2) Firebase 로그인
     debugPrint("[GoogleAuth] signing in with custom token...");
-    final fbUserCred =
-    await authInstance.signInWithCustomToken(firebaseCustomToken);
+    final fbUserCred = await authInstance.signInWithCustomToken(firebaseCustomToken);
     debugPrint("[GoogleAuth] firebase login success: ${fbUserCred.user}");
     final fb.User firebaseUser = fbUserCred.user!;
 
-    // 🔥 3) 익명 → 새 계정으로 데이터 마이그레이션
-    if (anonUid != null && anonUid != firebaseUser.uid) {
-      await UserDataMigrator().migrateAnonymousData(
-        fromUid: anonUid,
-        toUid: firebaseUser.uid,
-      );
+    // 🔥 3) 수집된 데이터가 있으면 마이그레이션 적용
+    if (migratedData != null) {
+      debugPrint("[GoogleAuth] applying migration to ${firebaseUser.uid}...");
+      await UserDataMigrator().applyMigration(firebaseUser.uid, migratedData);
     }
     // ✅ AuthUser 생성 (uid는 Firebase, 나머지는 GoogleSignIn에서)
     final authUser = AuthUser(

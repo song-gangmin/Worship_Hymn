@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:worship_hymn/constants/topic_hymns.dart';
+import 'package:worship_hymn/constants/text_styles.dart';
+import 'package:worship_hymn/constants/colors.dart';
 
 class GenreScroll extends StatelessWidget {
   final void Function(String topic, List<int> hymnList) onTopicSelected;
@@ -25,10 +27,13 @@ class GenreScroll extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.getSurface(context),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(genre, style: const TextStyle(fontSize: 15)),
+                child: Text(genre, style: TextStyle(
+                  fontSize: AppTextStyles.font(context).applySize(15),
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                )),
               ),
             );
           }).toList(),
@@ -50,13 +55,16 @@ class GenreChip extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.black12),
+        color: AppColors.getSurface(context),
+        border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 14, color: Colors.black),
+        style: TextStyle(
+          fontSize: AppTextStyles.font(context).applySize(14),
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black
+        ),
       ),
     );
   }

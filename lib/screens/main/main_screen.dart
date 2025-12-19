@@ -71,7 +71,6 @@ class _MainScreenState extends State<MainScreen> {
 
   /// 바텀 navigation
   @override
-  @override
   Widget build(BuildContext context) {
     // 1. 현재 로그인된 유저 ID 가져오기
     final user = FirebaseAuth.instance.currentUser;
@@ -80,9 +79,20 @@ class _MainScreenState extends State<MainScreen> {
     if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     // 2. 여기서 Firestore 데이터 실시간 감지 (StreamBuilder)
+    debugPrint(">>> MainScreen build (${user.uid})");
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          debugPrint(">>> MainScreen StreamBuilder 에러: ${snapshot.error}");
+          // 에러 시 사용자에게 알림 또는 빈 화면
+          return Scaffold(body: Center(child: Text("데이터를 불러오는데 실패했습니다: ${snapshot.error}")));
+        }
+        
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          debugPrint(">>> MainScreen StreamBuilder 기다리는 중...");
+        }
+
         return Scaffold(
           body: IndexedStack(
             index: _selectedIndex,
@@ -90,14 +100,14 @@ class _MainScreenState extends State<MainScreen> {
           ),
           bottomNavigationBar: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.getSurface(context),
             currentIndex: _selectedIndex,
             onTap: (index) {
               setState(() {
                 _selectedIndex = index;
               });
             },
-            selectedItemColor: const Color(0xFF673E38),
+            selectedItemColor: Theme.of(context).primaryColor,
             unselectedItemColor: Colors.grey,
             showSelectedLabels: true,
             showUnselectedLabels: true,
@@ -106,22 +116,22 @@ class _MainScreenState extends State<MainScreen> {
             items: [
               BottomNavigationBarItem(
                 icon: SvgPicture.asset('assets/icon/home.svg', width: 20, height: 20,
-                    colorFilter: ColorFilter.mode(_selectedIndex == 0 ? const Color(0xFF673E38) : Colors.grey, BlendMode.srcIn)),
+                    colorFilter: ColorFilter.mode(_selectedIndex == 0 ? Theme.of(context).primaryColor : Colors.grey, BlendMode.srcIn)),
                 label: '홈',
               ),
               BottomNavigationBarItem(
                 icon: SvgPicture.asset('assets/icon/score.svg', width: 20, height: 20,
-                    colorFilter: ColorFilter.mode(_selectedIndex == 1 ? const Color(0xFF673E38) : Colors.grey, BlendMode.srcIn)),
+                    colorFilter: ColorFilter.mode(_selectedIndex == 1 ? Theme.of(context).primaryColor : Colors.grey, BlendMode.srcIn)),
                 label: '악보',
               ),
               BottomNavigationBarItem(
                 icon: SvgPicture.asset('assets/icon/bookmark.svg', width: 20, height: 20,
-                    colorFilter: ColorFilter.mode(_selectedIndex == 2 ? const Color(0xFF673E38) : Colors.grey, BlendMode.srcIn)),
+                    colorFilter: ColorFilter.mode(_selectedIndex == 2 ? Theme.of(context).primaryColor : Colors.grey, BlendMode.srcIn)),
                 label: '즐겨찾기',
               ),
               BottomNavigationBarItem(
                 icon: SvgPicture.asset('assets/icon/setting.svg', width: 20, height: 20,
-                    colorFilter: ColorFilter.mode(_selectedIndex == 3 ? const Color(0xFF673E38) : Colors.grey, BlendMode.srcIn)),
+                    colorFilter: ColorFilter.mode(_selectedIndex == 3 ? Theme.of(context).primaryColor : Colors.grey, BlendMode.srcIn)),
                 label: '설정',
               ),
             ],

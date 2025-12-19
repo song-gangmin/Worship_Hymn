@@ -23,8 +23,8 @@ class PlaylistDialog extends StatelessWidget {
     return AlertDialog(
       contentPadding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: Colors.white,
-      title: Text(title, style: AppTextStyles.sectionTitle),
+      backgroundColor: AppColors.getSurface(context),
+      title: Text(title, style: AppTextStyles.sectionTitle(context)),
       content: SizedBox(
         width: 300,
         child: showTextField
@@ -37,14 +37,15 @@ class PlaylistDialog extends StatelessWidget {
               isDense: true,
               contentPadding: const EdgeInsets.only(bottom: 4),
               hintText: '제목을 입력하세요',
-              hintStyle: AppTextStyles.caption.copyWith(fontSize: 16),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
+              hintStyle: AppTextStyles.caption(context).copyWith(fontSize: AppTextStyles.font(context).applySize(16)),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white24 : Colors.grey),
               ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.black, width: 1),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
               ),
             ),
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
           ),
         )
             : const SizedBox.shrink(),
@@ -57,15 +58,15 @@ class PlaylistDialog extends StatelessWidget {
             _dialogBtn(
               context,
               '취소',
-              Colors.grey.shade200,
-              Colors.black,
+              Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.grey.shade200,
+              Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black,
                   () => Navigator.pop(context, false),
             ),
             const SizedBox(width: 10),
             _dialogBtn(
               context,
               confirmText,
-              AppColors.primary,
+              Theme.of(context).primaryColor,
               Colors.white,
                   () {
                 onConfirm?.call();
@@ -98,8 +99,8 @@ class PlaylistDialog extends StatelessWidget {
         onPressed: onPressed,
         child: Text(
           text,
-          style: AppTextStyles.body.copyWith(
-            fontSize: 14,
+          style: AppTextStyles.body(ctx).copyWith(
+            fontSize: AppTextStyles.font(ctx).applySize(14),
             color: fg,
             fontWeight: FontWeight.w500,
           ),

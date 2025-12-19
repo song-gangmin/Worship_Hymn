@@ -10,12 +10,12 @@ class FontScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        title: Text("폰트 설정", style: AppTextStyles.headline(context).copyWith(fontSize: 22)),
-        backgroundColor: AppColors.background,
+        title: Text("글자 설정", style: AppTextStyles.headline(context).copyWith(fontSize: 18)),
+        backgroundColor: AppColors.getBackground(context),
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
       ),
       body: Consumer<FontProvider>(
         builder: (context, font, child) {
@@ -26,7 +26,7 @@ class FontScreen extends StatelessWidget {
               children: [
                 // 1. 프리뷰 카드
                 Card(
-                  color: Colors.white,
+                  color: AppColors.getSurface(context),
                   surfaceTintColor: Colors.transparent,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   elevation: 1,
@@ -39,7 +39,7 @@ class FontScreen extends StatelessWidget {
                           "미리보기",
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey,
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey,
                             fontFamily: font.fontFamily,
                           ),
                         ),
@@ -63,7 +63,7 @@ class FontScreen extends StatelessWidget {
                 Text("글자 크기", style: AppTextStyles.sectionTitle(context)),
                 const SizedBox(height: 10),
                 Card(
-                  color: Colors.white,
+                  color: AppColors.getSurface(context),
                   surfaceTintColor: Colors.transparent,
                   child: Padding(
                     padding: const EdgeInsets.all(15),
@@ -72,18 +72,18 @@ class FontScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("작게", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text("기본", style: TextStyle(fontSize: 14, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey)),
                             Text("${font.fontSizeStep}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text("크게", style: TextStyle(fontSize: 16, color: Colors.grey)),
+                            Text("크게", style: TextStyle(fontSize: 18, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey)),
                           ],
                         ),
                         Slider(
                           value: font.fontSizeStep.toDouble(),
-                          min: -5,
-                          max: 5,
+                          min: 0,
+                          max: 10,
                           divisions: 10,
                           label: "${font.fontSizeStep}",
-                          activeColor: AppColors.primary,
+                          activeColor: Theme.of(context).primaryColor,
                           onChanged: (val) {
                             font.setFontSizeStep(val.toInt());
                           },
@@ -99,7 +99,7 @@ class FontScreen extends StatelessWidget {
                 Text("글자 두께", style: AppTextStyles.sectionTitle(context)),
                 const SizedBox(height: 10),
                 Card(
-                  color: Colors.white,
+                  color: AppColors.getSurface(context),
                   surfaceTintColor: Colors.transparent,
                   child: Padding(
                     padding: const EdgeInsets.all(15),
@@ -108,18 +108,18 @@ class FontScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("얇게", style: TextStyle(fontWeight: FontWeight.w200, color: Colors.grey)),
+                            Text("기본", style: TextStyle(fontWeight: FontWeight.w400, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey)),
                             Text("${font.fontWeightStep}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text("굵게", style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black)),
+                            Text("굵게", style: TextStyle(fontWeight: FontWeight.w900, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)),
                           ],
                         ),
                         Slider(
                           value: font.fontWeightStep.toDouble(),
-                          min: -2,
-                          max: 2,
-                          divisions: 4,
+                          min: 0,
+                          max: 5,
+                          divisions: 5,
                           label: "${font.fontWeightStep}",
-                          activeColor: AppColors.primary,
+                          activeColor: Theme.of(context).primaryColor,
                           onChanged: (val) {
                             font.setFontWeightStep(val.toInt());
                           },

@@ -42,6 +42,10 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   List<Map<String, dynamic>> originalPlaylists = [];
   List<Map<String, dynamic>> editingPlaylists = [];
 
+  // 🔥 순서 변경 시 부드러운 UI 연출을 위한 로컬 버퍼
+  List<QueryDocumentSnapshot>? _reorderedSongs;
+  Timer? _reorderTimer;
+
   @override
   void initState() {
     super.initState();
@@ -70,15 +74,15 @@ class BookmarkScreenState extends State<BookmarkScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.getBackground(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: isEditing
             ? IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              size: 20, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios_new,
+              size: 20, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
           onPressed: () {
             setState(() {
               isEditing = false;
@@ -90,7 +94,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
             : null,
         title: isEditing
             ? const SizedBox.shrink()
-            : const Text('즐겨찾기', style: AppTextStyles.headline),
+            : Text('즐겨찾기', style: AppTextStyles.headline(context)),
         centerTitle: false,
         actions: [
           if (isEditing &&
@@ -99,7 +103,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
             Padding(
               padding: const EdgeInsets.only(left: 10, right: 0),
               child: IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.black87),
+                icon: Icon(Icons.delete_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
                 tooltip: '즐겨찾기 삭제',
                 onPressed: () {
                   final id = editingPlaylists[selectedPlaylistIndex]['id'];
@@ -134,8 +138,8 @@ class BookmarkScreenState extends State<BookmarkScreen> {
             child: Text(
               isEditing ? '완료' : '편집',
               style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 14,
+                color: Theme.of(context).primaryColor,
+                fontSize: AppTextStyles.font(context).applySize(14),
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -158,7 +162,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
       floatingActionButton: isEditing
           ? null
           : FloatingActionButton(
-        backgroundColor: AppColors.primary,
+        backgroundColor: Theme.of(context).primaryColor,
         shape: const CircleBorder(),
         onPressed: () => _showCreatePlaylistDialog(context, playlistService),
         child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -218,17 +222,32 @@ class BookmarkScreenState extends State<BookmarkScreen> {
             .collection('songs');
 
         return StreamBuilder<QuerySnapshot>(
-          stream: songCollection.orderBy('addedAt', descending: true).snapshots(),
+          // 🔥 모든 곡을 가져온 뒤 로컬에서 정렬 (order 필드가 없는 데이터가 누락되는 것 방지)
+          stream: songCollection.snapshots(),
           builder: (context, songSnap) {
             if (!songSnap.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // 1. 원본 데이터 가져오기
-            final rawDocs = songSnap.data!.docs;
+            // 1. 원본 데이터 가져오기 및 정렬
+            List<QueryDocumentSnapshot> rawDocs;
 
-            // 2. 삭제 중인 ID(_deletingSongIds)는 화면 목록에서 제외하고 리스트 생성
-            // (이렇게 해야 삭제 직후 Stream이 아직 업데이트 안 됐을 때도 화면에서 사라짐)
+            if (_reorderedSongs != null) {
+              // 🔥 사용자가 방금 순서를 바꿨다면 로컬 버퍼 데이터를 우선 사용 (snapping 방지)
+              rawDocs = List<QueryDocumentSnapshot>.from(_reorderedSongs!);
+            } else {
+              rawDocs = List<QueryDocumentSnapshot>.from(songSnap.data!.docs);
+              // 🔥 로컬 정렬: order 기준, 없으면 addedAt 기준
+              rawDocs.sort((a, b) {
+                final aData = a.data() as Map<String, dynamic>;
+                final bData = b.data() as Map<String, dynamic>;
+                final aOrder = aData['order'] ?? (aData['addedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                final bOrder = bData['order'] ?? (bData['addedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                return aOrder.compareTo(bOrder);
+              });
+            }
+
+            // 2. 삭제 중인 ID(_deletingSongIds) 제외
             final songs = rawDocs
                 .where((doc) => !_deletingSongIds.contains(doc.id))
                 .toList();
@@ -240,18 +259,41 @@ class BookmarkScreenState extends State<BookmarkScreen> {
             return ReorderableListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               itemCount: songs.length,
-              onReorder: (oldIndex, newIndex) async {
+              onReorder: (oldIndex, newIndex) {
                 if (newIndex > oldIndex) newIndex -= 1;
 
-                final moved = songs.removeAt(oldIndex);
-                songs.insert(newIndex, moved);
+                // 🔥 1. 로컬 상태 즉시 업데이트 (프레임워크 애니메이션과 동기화)
+                setState(() {
+                  final list = List<QueryDocumentSnapshot>.from(songs);
+                  final moved = list.removeAt(oldIndex);
+                  list.insert(newIndex, moved);
+                  _reorderedSongs = list;
 
-                // Firestore 저장 (순서 변경)
-                for (int i = 0; i < songs.length; i++) {
-                  await songs[i].reference.update({'order': i});
-                }
+                  // 4초 동안은 서버 스트림보다 로컬 데이터를 우선시함 (안정성)
+                  _reorderTimer?.cancel();
+                  _reorderTimer = Timer(const Duration(seconds: 4), () {
+                    if (mounted) {
+                      setState(() {
+                        _reorderedSongs = null;
+                      });
+                    }
+                  });
+                });
 
-                setState(() {});
+                // 🔥 2. Firestore Batch 저장 (비동기로 백그라운드에서 실행)
+                final listToSave = List<QueryDocumentSnapshot>.from(_reorderedSongs!);
+                Future.microtask(() async {
+                  try {
+                    final batch = FirebaseFirestore.instance.batch();
+                    for (int i = 0; i < listToSave.length; i++) {
+                      batch.update(listToSave[i].reference, {'order': i});
+                    }
+                    await batch.commit();
+                    debugPrint(">>> 즐겨찾기 순서 변경 Firestore 반영 완료");
+                  } catch (e) {
+                    debugPrint(">>> 즐겨찾기 순서 변경 Firestore 반영 에러: $e");
+                  }
+                });
               },
               itemBuilder: (_, i) {
                 final doc = songs[i]; // 현재 문서 객체
@@ -260,87 +302,88 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                 final number = (data['number'] ?? 0) as int;
                 final docId = doc.id; // 문서 ID
 
-                return Dismissible(
-                  key: ValueKey(docId), // ★ 문서 ID를 키로 사용해야 안전함
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  onDismissed: (_) async {
-                    // 🔥 1. UI에서 즉시 안 보이게 처리 (삭제 중 목록에 추가)
-                    setState(() {
-                      _deletingSongIds.add(docId);
-                    });
-
-                    // 🔥 2. Firestore 삭제 요청
-                    try {
-                      if (selectedPlaylist['name'] == '전체') {
-                        await _deleteSongFromAllPlaylists(number);
-                      } else {
-                        await playlistService.deleteSongFromPlaylist(
-                          playlistId: selectedPlaylistId,
-                          hymnNumber: number,
-                        );
-                      }
-                      // 성공하면 Stream이 업데이트되면서 자연스럽게 목록에서 빠짐
-                    } catch (e) {
-                      // 실패하면 다시 보이게 복구
-                      if (mounted) {
-                        setState(() {
-                          _deletingSongIds.remove(docId);
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('삭제 중 오류가 발생했습니다.')),
-                        );
-                      }
-                    }
-                  },
-                  child: Container(
-                    // Key를 인덱스 대신 docId로 변경하여 꼬임 방지
-                    key: ValueKey("tile_$docId"),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        bottom: BorderSide(color: Colors.black12, width: 0.5),
-                      ),
+                return ReorderableDelayedDragStartListener(
+                  key: ValueKey(docId),
+                  index: i,
+                  child: Dismissible(
+                    key: ValueKey("dismiss_$docId"),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
                     ),
-                    child: ListTile(
-                      dense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                      leading: SizedBox(
-                        width: 40,
-                        child: Text(
-                          number.toString(),
-                          textAlign: TextAlign.left,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w300,
+                    onDismissed: (_) async {
+                      setState(() {
+                        _deletingSongIds.add(docId);
+                      });
+                      try {
+                        if (selectedPlaylist['name'] == '전체') {
+                          await _deleteSongFromAllPlaylists(number);
+                        } else {
+                          await playlistService.deleteSongFromPlaylist(
+                            playlistId: selectedPlaylistId,
+                            hymnNumber: number,
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() {
+                            _deletingSongIds.remove(docId);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('삭제 중 오류가 발생했습니다.')),
+                          );
+                        }
+                      }
+                    },
+                    child: Container(
+                      key: ValueKey("tile_$docId"),
+                      decoration: BoxDecoration(
+                        color: AppColors.getSurface(context),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black12,
+                            width: 0.5,
                           ),
                         ),
                       ),
-                      title: Text(
-                        title,
-                        style: AppTextStyles.body.copyWith(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      trailing: const Icon(Icons.drag_handle,
-                          color: Colors.black54, size: 20),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ScoreDetailScreen(
-                              hymnNumber: number,
-                              hymnTitle: title,
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                        leading: SizedBox(
+                          width: 40,
+                          child: Text(
+                            number.toString(),
+                            textAlign: TextAlign.left,
+                            style: TextStyle(
+                              fontSize: AppTextStyles.font(context).applySize(16),
+                              fontWeight: FontWeight.w300,
                             ),
                           ),
-                        );
-                      },
+                        ),
+                        title: Text(
+                          title,
+                          style: AppTextStyles.body(context).copyWith(
+                            fontSize: AppTextStyles.font(context).applySize(17),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        trailing: Icon(Icons.drag_handle,
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54, size: 20),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ScoreDetailScreen(
+                                hymnNumber: number,
+                                hymnTitle: title,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 );
@@ -371,7 +414,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
           // 제목 + 연필(이름수정)
           Row(
             children: [
-              Text(playlistName, style: AppTextStyles.headline),
+              Text(playlistName, style: AppTextStyles.headline(context)),
               const SizedBox(width: 6),
               if (playlistName != '전체')
                 GestureDetector(
@@ -379,8 +422,8 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                     final currentName = playlistName;
                     _showRenameDialog(playlistId, currentName);
                   },
-                  child: const Icon(Icons.edit,
-                      size: 20, color: Colors.black54),
+                  child: Icon(Icons.edit,
+                      size: 20, color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54),
                 ),
             ],
           ),
@@ -431,12 +474,12 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                                 ? Icons.check_box
                                 : Icons.check_box_outline_blank,
                             size: 20,
-                            color: Colors.black,
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                           ),
                           const SizedBox(width: 6),
                           Text('전체 선택',
-                              style: AppTextStyles.button
-                                  .copyWith(fontSize: 15)),
+                              style: AppTextStyles.button(context)
+                                  .copyWith(fontSize: AppTextStyles.font(context).applySize(15))),
                         ],
                       ),
                     ),
@@ -466,9 +509,14 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                             child: Container(
                               decoration: BoxDecoration(
                                 color:
-                                selected ? Colors.black12 : Colors.white,
-                                border: const Border(
-                                  bottom: BorderSide(color: Colors.black12, width: 0.5),
+                                selected 
+                                    ? (Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12) 
+                                    : AppColors.getSurface(context),
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black12,
+                                    width: 0.5,
+                                  ),
                                 ),
                               ),
                               child: ListTile(
@@ -480,19 +528,19 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                                   children: [
                                     Text(
                                       number.toString(),
-                                      style: AppTextStyles.button
-                                          .copyWith(fontSize: 14),
+                                      style: AppTextStyles.button(context)
+                                          .copyWith(fontSize: AppTextStyles.font(context).applySize(14)),
                                     ),
                                   ],
                                 ),
                                 title: Text(
                                   title,
-                                  style: AppTextStyles.body.copyWith(
-                                      fontSize: 17,
+                                  style: AppTextStyles.body(context).copyWith(
+                                      fontSize: AppTextStyles.font(context).applySize(17),
                                       fontWeight: FontWeight.w500),
                                 ),
-                                trailing: const Icon(Icons.drag_handle,
-                                    color: Colors.black54, size: 20),
+                                trailing: Icon(Icons.drag_handle,
+                                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54, size: 20),
                               ),
                             ),
                           );
@@ -512,7 +560,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: FloatingActionButton.extended(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: Theme.of(context).primaryColor,
                   icon: const Icon(Icons.delete, color: Colors.white),
                   label: Text(
                     '삭제 (${selectedItems.length})',
@@ -658,7 +706,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : Colors.white,
+                    color: selected ? Theme.of(context).primaryColor : AppColors.getSurface(context),
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       if (!selected)
@@ -672,9 +720,11 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                   child: Text(
                     name,
                     style: TextStyle(
-                      color: selected ? Colors.white : Colors.black87,
+                      color: selected 
+                          ? Colors.white 
+                          : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
                       fontWeight: FontWeight.w500,
-                      fontSize: 15,
+                      fontSize: AppTextStyles.font(context).applySize(15),
                     ),
                   ),
                 ),
@@ -712,7 +762,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
                   SnackBar(
                     content: Text('"$name" 즐겨찾기가 추가되었습니다.'),
                     behavior: SnackBarBehavior.floating,
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: Theme.of(context).primaryColor,
                   ),
                 );
               });

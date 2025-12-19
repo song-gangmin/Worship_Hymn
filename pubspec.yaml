@@ -1,6 +1,6 @@
 name: worship_hymn
 description: "A new Flutter project."
-version: 1.0.0+5
+version: 1.0.0+6
 
 environment:
   sdk: ^3.5.4
@@ -25,6 +25,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.5+1
   shared_preferences: ^2.5.4
+  package_info_plus: ^9.0.0
 
 
 
@@ -45,16 +46,24 @@ flutter:
   fonts:
     - family: Pretendard
       fonts:
-        - asset: assets/fonts/pretendard_black.otf
-        - asset: assets/fonts/pretendard_regular.otf
-        - asset: assets/fonts/pretendard_bold.otf
-        - asset: assets/fonts/pretendard_extrabold.otf
-        - asset: assets/fonts/pretendard_extralight.otf
-        - asset: assets/fonts/pretendard_light.otf
-        - asset: assets/fonts/pretendard_medium.otf
-        - asset: assets/fonts/pretendard_semibold.otf
         - asset: assets/fonts/pretendard_thin.otf
+          weight: 100
+        - asset: assets/fonts/pretendard_extralight.otf
+          weight: 200
+        - asset: assets/fonts/pretendard_light.otf
+          weight: 300
+        - asset: assets/fonts/pretendard_regular.otf
+          weight: 400
+        - asset: assets/fonts/pretendard_medium.otf
+          weight: 500
+        - asset: assets/fonts/pretendard_semibold.otf
+          weight: 600
+        - asset: assets/fonts/pretendard_bold.otf
           weight: 700
+        - asset: assets/fonts/pretendard_extrabold.otf
+          weight: 800
+        - asset: assets/fonts/pretendard_black.otf
+          weight: 900
   assets:
     - assets/icon/app_icon.png
     - assets/icon/kakao.png

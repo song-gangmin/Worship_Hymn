@@ -6,9 +6,9 @@ class FontProvider with ChangeNotifier {
   static const String _keyFontWeight = 'font_weight_step';
   static const String _keyFontFamily = 'font_family';
 
-  // -5 ~ +5 (Default 0)
+  // 0 ~ 10 (Default 0)
   int _fontSizeStep = 0;
-  // -2 ~ +2 (Default 0, Regular)
+  // 0 ~ 5 (Default 0)
   int _fontWeightStep = 0;
   
   String _fontFamily = 'Pretendard';
@@ -21,25 +21,22 @@ class FontProvider with ChangeNotifier {
     _loadSettings();
   }
 
-  // 글자 크기 배율 (0.8 ~ 1.4)
+  // 글자 크기 배율 (1.0 ~ 1.5)
   double get scaleFactor {
     // step당 0.05 (5%) 씩 증감
-    // -5 => 0.75, 0 => 1.0, +5 => 1.25
+    // 0 => 1.0, 10 => 1.5
     return 1.0 + (_fontSizeStep * 0.05);
   }
   
-  // 폰트 두께 조절 로직
-  // step이 0이면 변화 없음.
-  // step이 높을수록 기본 두께 자체가 두꺼워짐.
+  // 미리보기용 폰트 두께 조절 로직 (0일 때 Regular 기준)
   FontWeight get adjustedDisplayWeight {
-     switch (_fontWeightStep) {
-       case -2: return FontWeight.w200; // ExtraLight
-       case -1: return FontWeight.w300; // Light
-       case 0: return FontWeight.w400;  // Regular
-       case 1: return FontWeight.w600;  // SemiBold
-       case 2: return FontWeight.w700;  // Bold
-       default: return FontWeight.w400;
-     }
+     const weights = [
+       FontWeight.w100, FontWeight.w200, FontWeight.w300, FontWeight.w400,
+       FontWeight.w500, FontWeight.w600, FontWeight.w700, FontWeight.w800, FontWeight.w900
+     ];
+     int idx = 3 + _fontWeightStep; // 3 is w400(Regular)
+     if (idx > 8) idx = 8;
+     return weights[idx];
   }
 
   /// 특정 스타일의 fontSize에 scaleFactor를 적용한 값을 반환
@@ -48,20 +45,9 @@ class FontProvider with ChangeNotifier {
   }
 
   /// 특정 스타일에 대한 변환된 폰트 두께 계산
-  /// 원래 스타일이 Bold(700)였다면, 설정이 +1일때 ExtraBold(800)가 되어야 함.
   FontWeight applyWeight(FontWeight original) {
-    int delta = 0;
-    // 매핑 전략: 
-    // step -2: 두 단계 얇게
-    // step -1: 한 단계 얇게
-    // step 0: 그대로
-    // step +1: 한 단계 두껍게 (400->600, 600->700)
-    // step +2: 두 단계 두껍게
-    
-    // 단순화: 
     if (_fontWeightStep == 0) return original;
 
-    // Flutter FontWeight values list (100,200,300,400,500,600,700,800,900)
     const weights = [
       FontWeight.w100, FontWeight.w200, FontWeight.w300, FontWeight.w400,
       FontWeight.w500, FontWeight.w600, FontWeight.w700, FontWeight.w800, FontWeight.w900
@@ -70,19 +56,9 @@ class FontProvider with ChangeNotifier {
     int currentIdx = weights.indexOf(original);
     if (currentIdx == -1) currentIdx = 3; // Default w400
 
-    // step이 +1 (조금 굵게) -> index +1 or +2 (Regular->SemiBold is a good jump)
-    // 400(idx3) -> 600(idx5) 가 눈에 띔.
-    // 600(idx5) -> 700(idx6)
-    
-    // 선형적으로 인덱스를 더하자. 
-    // -2(-2), -1(-1), 0(0), 1(+1), 2(+2)
     int newIdx = currentIdx + _fontWeightStep;
-    
-    // 예외처리: Regular(400)에서 +1(굵게)하면 500(Medium)인데, Medium은 차이가 적음. 
-    // 400에서 바로 600가고 싶을 수 있음. 하지만 일관성을 위해 일단 선형 이동.
-    
-    if (newIdx < 0) newIdx = 0;
     if (newIdx > 8) newIdx = 8;
+    if (newIdx < 0) newIdx = 0;
     
     return weights[newIdx];
   }
@@ -107,8 +83,12 @@ class FontProvider with ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    _fontSizeStep = prefs.getInt(_keyFontSize) ?? 0;
-    _fontWeightStep = prefs.getInt(_keyFontWeight) ?? 0;
+    int size = prefs.getInt(_keyFontSize) ?? 0;
+    int weight = prefs.getInt(_keyFontWeight) ?? 0;
+    
+    // 범위 체크 (0~10, 0~5)
+    _fontSizeStep = size.clamp(0, 10);
+    _fontWeightStep = weight.clamp(0, 5);
     _fontFamily = prefs.getString(_keyFontFamily) ?? 'Pretendard';
     notifyListeners();
   }

@@ -12,6 +12,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:worship_hymn/screens/home/RecentAllScreen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+import 'package:worship_hymn/providers/display_provider.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -42,12 +44,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.getBackground(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text('홈', style: AppTextStyles.headline),
+        title: Text('홈', style: AppTextStyles.headline(context)),
         centerTitle: false,
       ),
       body: Padding(
@@ -71,17 +73,20 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.getSurface(context),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.search, color: Colors.black),
+                    Icon(
+                      Icons.search,
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '장, 제목 등',
-                      style: AppTextStyles.caption,
+                      style: AppTextStyles.caption(context),
                     ),
                   ],
                 ),
@@ -91,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
 
             // 🎧 장르별
-            Text('장르별', style: AppTextStyles.sectionTitle),
+            Text('장르별', style: AppTextStyles.sectionTitle(context)),
             const SizedBox(height: 12),
             GenreScroll(
               onTopicSelected: (topic, hymns) {
@@ -106,34 +111,50 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 26),
 
             // ⭐ 최근 본 찬송가
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('최근 본 찬송가', style: AppTextStyles.sectionTitle),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RecentAllScreen(uid: uid),
-                      ),
-                    );
-                  },
-                  child: Text('모두 보기', style: AppTextStyles.caption),
-                ),
-              ],
+            Consumer<DisplayProvider>(
+              builder: (context, display, child) {
+                if (!display.showRecent) return const SizedBox.shrink();
+                return Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('최근 본 찬송가', style: AppTextStyles.sectionTitle(context)),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => RecentAllScreen(uid: uid),
+                              ),
+                            );
+                          },
+                          child: Text('모두 보기', style: AppTextStyles.caption(context)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildRecent3(),
+                    const SizedBox(height: 32),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 12),
-
-            _buildRecent3(),
-
-            const SizedBox(height: 32),
 
             // ⭐ 이번 주 인기 찬송가
-            Text('이번 주 인기 찬송가 TOP 3', style: AppTextStyles.sectionTitle),
-            const SizedBox(height: 12),
-
-            _buildWeeklyTop3(),
+            Consumer<DisplayProvider>(
+              builder: (context, display, child) {
+                if (!display.showPopular) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('이번 주 인기 찬송가 TOP 3', style: AppTextStyles.sectionTitle(context)),
+                    const SizedBox(height: 12),
+                    _buildWeeklyTop3(),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -176,14 +197,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     Icons.history,
                     size: 16,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600],
                   ),
                   const SizedBox(width: 4),
                   Text(
                     timeAgo(viewedAt),
-                    style: AppTextStyles.caption.copyWith(
-                      color: Colors.grey.shade700,
-                      fontSize: 13,
+                    style: AppTextStyles.caption(context).copyWith(
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey[700],
+                      fontSize: AppTextStyles.font(context).applySize(13),
                     ),
                   ),
                 ],
@@ -235,14 +256,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     Icons.remove_red_eye,
                     size: 18,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600],
                   ),
                   const SizedBox(width: 4),
                   Text(
                     "$weeklyCount",
-                    style: AppTextStyles.caption.copyWith(
-                      color: Colors.grey.shade700,
-                      fontSize: 13,
+                    style: AppTextStyles.caption(context).copyWith(
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey[700],
+                      fontSize: AppTextStyles.font(context).applySize(13),
                     ),
                   ),
                 ],
@@ -275,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       child: Card(
         elevation: 0,
-        color: Colors.white,
+        color: AppColors.getSurface(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -290,8 +311,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 'assets/icon/music.svg',
                 width: 32,
                 height: 32,
-                colorFilter: const ColorFilter.mode(
-                  AppColors.primary,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).primaryColor,
                   BlendMode.srcIn,
                 ),
               ),
@@ -306,7 +327,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       "$number장",
-                      style: AppTextStyles.body.copyWith(
+                      style: AppTextStyles.body(context).copyWith(
                         height: 1.2,
                       ),
                       textAlign: TextAlign.start,
@@ -314,10 +335,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 6),
                     Text(
                       title,
-                      style: AppTextStyles.caption.copyWith(
-                        fontSize: 14,
+                      style: AppTextStyles.caption(context).copyWith(
+                        fontSize: AppTextStyles.font(context).applySize(14),
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54,
                         height: 1.2,
                       ),
                       maxLines: 1,

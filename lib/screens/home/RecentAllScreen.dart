@@ -17,14 +17,15 @@ class RecentAllScreen extends StatelessWidget {
     final recentService = RecentService(uid: uid);
 
     return Scaffold(
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.getBackground(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         title: Text(
           '최근 본 찬송가 모두 보기',
-          style: AppTextStyles.headline.copyWith(fontSize: 18),
+          style: AppTextStyles.headline(context).copyWith(fontSize: 18),
         ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
@@ -91,7 +92,7 @@ class RecentAllScreen extends StatelessWidget {
       },
       child: Card(
         elevation: 0,
-        color: Colors.white,
+        color: AppColors.getSurface(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -105,8 +106,8 @@ class RecentAllScreen extends StatelessWidget {
                 'assets/icon/music.svg',
                 width: 32,
                 height: 32,
-                colorFilter: const ColorFilter.mode(
-                  AppColors.primary,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).primaryColor,
                   BlendMode.srcIn,
                 ),
               ),
@@ -119,15 +120,15 @@ class RecentAllScreen extends StatelessWidget {
                   children: [
                     Text(
                       "$number장",
-                      style: AppTextStyles.body.copyWith(height: 1.2),
+                      style: AppTextStyles.body(context).copyWith(height: 1.2),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       title,
-                      style: AppTextStyles.caption.copyWith(
+                      style: AppTextStyles.caption(context).copyWith(
                         height: 1.2,
                         fontSize: 14,
-                        color: Colors.black54,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
@@ -141,9 +142,9 @@ class RecentAllScreen extends StatelessWidget {
                 const SizedBox(width: 12),
                 Text(
                   trailingText,
-                  style: AppTextStyles.caption.copyWith(
+                  style: AppTextStyles.caption(context).copyWith(
                     fontSize: 12,
-                    color: Colors.grey.shade700,
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[700],
                   ),
                 ),
               ],

@@ -23,9 +23,10 @@ Future<void> appLogout() async {
   // 2) Firebase 세션 종료
   try { await FirebaseAuth.instance.signOut(); } catch (_) {}
 
-  // 3) 로컬 캐시 초기화 (처음 설치 상태처럼)
+  // 3) 로컬 캐시 초기화 (필요한 경우 특정 키만 삭제하지만, 설정은 유지하는 것이 좋음)
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-  } catch (_) {}
+   }catch (_) {}
 }
+

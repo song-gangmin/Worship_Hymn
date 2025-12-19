@@ -41,23 +41,22 @@ class NaverAuth implements AuthService {
     final firebaseCustomToken = jsonDecode(resp.body)['firebaseToken'] as String;
 
     // 4) Firebase Auth 로그인
-    // 🔥 1) 기존(익명) 유저 보관
+    // 🔥 1) 현재 유저(익명일 수 있음) 데이터 미리 수집
     final authInstance = fb.FirebaseAuth.instance;
     final prevUser = authInstance.currentUser;
-    final String? anonUid =
-    (prevUser != null && prevUser.isAnonymous) ? prevUser.uid : null;
+    Map<String, dynamic>? migratedData;
+    if (prevUser != null && prevUser.isAnonymous) {
+      migratedData = await UserDataMigrator().collectData(prevUser.uid);
+    }
 
     // 2) Firebase Auth 로그인
     final fbUserCred =
     await authInstance.signInWithCustomToken(firebaseCustomToken);
     final fb.User firebaseUser = fbUserCred.user!;
 
-    // 🔥 3) 익명 데이터 → 새 계정으로 마이그레이션
-    if (anonUid != null && anonUid != firebaseUser.uid) {
-      await UserDataMigrator().migrateAnonymousData(
-        fromUid: anonUid,
-        toUid: firebaseUser.uid,
-      );
+    // 🔥 3) 수집된 데이터가 있으면 마이그레이션 적용
+    if (migratedData != null) {
+      await UserDataMigrator().applyMigration(firebaseUser.uid, migratedData);
     }
 
     // 5) 이름 처리 (name > nickname > id 순서)

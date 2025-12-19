@@ -58,12 +58,12 @@ class ScoreScreenState extends State<ScoreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.getBackground(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text('악보', style: AppTextStyles.headline),
+        title: Text('악보', style: AppTextStyles.headline(context)),
         centerTitle: false,
       ),
       body: Column(
@@ -112,17 +112,20 @@ class ScoreScreenState extends State<ScoreScreen> {
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.getSurface(context),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            const Icon(Icons.search, color: Colors.black),
+            Icon(
+              Icons.search,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black,
+            ),
             const SizedBox(width: 8),
             Text(
               '장, 제목 등',
-              style: AppTextStyles.caption,
+              style: AppTextStyles.caption(context),
             ),
           ],
         ),
@@ -149,7 +152,7 @@ class ScoreScreenState extends State<ScoreScreen> {
         padding:
         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Card(
-          color: Colors.white,
+          color: AppColors.getSurface(context),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
           child: Theme(
@@ -161,7 +164,7 @@ class ScoreScreenState extends State<ScoreScreen> {
               tilePadding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 4),
               title: Text('$start~$end',
-                  style: AppTextStyles.sectionTitle),
+                  style: AppTextStyles.sectionTitle(context)),
               onExpansionChanged: (open) =>
                   setState(() => _sections[idx]['isOpen'] = open),
               children: _buildList(filtered),
@@ -179,7 +182,7 @@ class ScoreScreenState extends State<ScoreScreen> {
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       children: [
         Card(
-          color: Colors.white,
+          color: AppColors.getSurface(context),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
           child: Column(
@@ -193,11 +196,15 @@ class ScoreScreenState extends State<ScoreScreen> {
                     Expanded(
                       child: Text(
                         _title,
-                        style: AppTextStyles.sectionTitle,
+                        style: AppTextStyles.sectionTitle(context),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, size: 20),
+                      icon: Icon(
+                        Icons.close,
+                        size: 20,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black,
+                      ),
                       splashRadius: 18,
                       onPressed: () {
                         // 1) 악보 탭 초기화
@@ -229,9 +236,12 @@ class ScoreScreenState extends State<ScoreScreen> {
       final n = nums[i];
       items.add(_buildEntry(n));
       if (i != nums.length - 1) {
-        items.add(const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14),
-          child: Divider(height: 0.5, color: Colors.black12),
+        items.add(Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Divider(
+            height: 0.5,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black12,
+          ),
         ));
       }
     }
@@ -267,11 +277,10 @@ class ScoreScreenState extends State<ScoreScreen> {
               child: Text(
                 numberPart,
                 textAlign: TextAlign.left,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: AppTextStyles.body(context).copyWith(
                   fontWeight: FontWeight.w300,
                   // 숫자 폭을 동일하게 만드는 설정 (폰트가 지원하면 적용됨)
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  fontFeatures: [const FontFeature.tabularFigures()],
                 ),
               ),
             ),
@@ -280,8 +289,8 @@ class ScoreScreenState extends State<ScoreScreen> {
             Expanded(
               child: Text(
                 titlePart,
-                style: AppTextStyles.body.copyWith(
-                  fontSize: 17,
+                style: AppTextStyles.body(context).copyWith(
+                  fontSize: AppTextStyles.font(context).applySize(17),
                   fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,

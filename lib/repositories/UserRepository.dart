@@ -25,8 +25,6 @@ class UserRepository {
 
       print("✅ Firestore 저장 성공: ${user.uid}");
 
-      final snap = await doc.get();
-      print("📄 Firestore 문서 내용: ${snap.data()}");
     } catch (e, st) {
       print("❌ Firestore 저장 실패: $e");
       print("🔍 StackTrace: $st");

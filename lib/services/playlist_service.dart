@@ -89,6 +89,7 @@ class PlaylistService {
         'number': hymnNumber,
         'title': title,
         'addedAt': FieldValue.serverTimestamp(),
+        'order': DateTime.now().millisecondsSinceEpoch, // 순서 필드 추가
       });
 
       txn.update(
@@ -112,6 +113,7 @@ class PlaylistService {
           'number': hymnNumber,
           'title': title,
           'addedAt': FieldValue.serverTimestamp(),
+          'order': DateTime.now().millisecondsSinceEpoch, // 순서 필드 추가
         });
 
         txn.update(
