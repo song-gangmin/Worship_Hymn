@@ -1,4 +1,4 @@
-enum AuthProvider { google, kakao, naver }
+enum AuthProvider { google, kakao, naver, apple }
 
 class AuthUser {
   final String uid;              // 공급자 고유 ID

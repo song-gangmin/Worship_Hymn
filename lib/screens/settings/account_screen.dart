@@ -31,9 +31,19 @@ class AccountScreen extends StatelessWidget {
 
         final data = snapshot.data!.data() ?? {};
         final email = data['email'] ?? user.email ?? '이메일 없음';
+        var name = data['name'] ?? user.displayName ?? '';
         final provider = data['provider'] ?? '알 수 없음';
         
+        // 🔹 Fallback name logic
+        if (name.isEmpty || name == '이름 없음') {
+           if (provider == 'apple') {
+             name = 'Apple 회원';
+           }
+        }
+        
         String iconPath = '';
+        IconData? iconData;
+
         switch (provider) {
           case 'google':
             iconPath = 'assets/icon/google.png';
@@ -43,6 +53,9 @@ class AccountScreen extends StatelessWidget {
             break;
           case 'naver':
             iconPath = 'assets/icon/naver.png';
+            break;
+          case 'apple':
+            iconData = Icons.apple;
             break;
         }
 
@@ -64,7 +77,12 @@ class AccountScreen extends StatelessWidget {
           body: Column(
             children: [
               const SizedBox(height: 20),
-              _buildInfoSection(context, provider, iconPath, email),
+              // Name is not displayed in the design, only email? 
+              // Verify user request: "apple logo... and call name also"
+              // The previous design only had email. 
+              // If the user wants name, I should add it.
+              // I'll add name above email if it's available.
+              _buildInfoSection(context, provider, iconPath, iconData, name, email),
               const SizedBox(height: 40),
               _buildActionItem(
                 context,
@@ -87,7 +105,7 @@ class AccountScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoSection(BuildContext context, String provider, String iconPath, String email) {
+  Widget _buildInfoSection(BuildContext context, String provider, String iconPath, IconData? iconData, String name, String email) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -104,16 +122,28 @@ class AccountScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              if (iconPath.isNotEmpty) ...[
-                _buildPlatformIcon(context, provider, iconPath),
-                const SizedBox(width: 12),
-              ],
-              Text(
-                email,
-                style: AppTextStyles.body(context).copyWith(
-                  fontSize: AppTextStyles.font(context).applySize(17),
-                  fontWeight: FontWeight.w500,
-                ),
+              _buildPlatformIcon(context, provider, iconPath, iconData),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   if (name.isNotEmpty && name != '이름 없음' && name != 'Apple 회원') // Show name if it's a real name? Or always?
+                   // User said "call name also". Let's show it if it exists.
+                    Text(
+                      name,
+                      style: AppTextStyles.body(context).copyWith(
+                        fontSize: AppTextStyles.font(context).applySize(14),
+                        color: Colors.grey,
+                      ),
+                    ),
+                  Text(
+                    email,
+                    style: AppTextStyles.body(context).copyWith(
+                      fontSize: AppTextStyles.font(context).applySize(17),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -122,7 +152,7 @@ class AccountScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlatformIcon(BuildContext context, String provider, String iconPath) {
+  Widget _buildPlatformIcon(BuildContext context, String provider, String iconPath, IconData? iconData) {
     Color? bgColor;
     double padding = 2; // 기본 패딩
     BoxBorder? border;
@@ -141,6 +171,14 @@ class AccountScreen extends StatelessWidget {
         border = Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade300);
         padding = 4;
         break;
+      case 'apple':
+         bgColor = Colors.white; // Apple usually white or black. Let's stick to white for icon contrast if using black icon
+         // In dark mode, maybe different?
+         // Let's use standard handling
+         bgColor = Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black; 
+         // If bg is black, icon should be white. If bg is white, icon black.
+         // Wait, Icon(Icons.apple) color needs to be set.
+         break;
     }
 
     return Container(
@@ -152,7 +190,9 @@ class AccountScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(5),
         border: border,
       ),
-      child: Image.asset(iconPath, fit: BoxFit.contain),
+      child: iconData != null 
+          ? Icon(iconData, size: 20, color: (provider == 'apple' && bgColor == Colors.black) ? Colors.white : Colors.black)
+          : Image.asset(iconPath, fit: BoxFit.contain),
     );
   }
 
@@ -247,8 +287,6 @@ class AccountScreen extends StatelessWidget {
     if (confirmed == true) {
       try {
         await AccountService().deleteAccount(uid);
-        // Deleting Firebase Auth user will automatically log them out.
-        // The main_screen or auth wrapper should handle the navigation to login.
         if (context.mounted) {
           Navigator.of(context).popUntil((route) => route.isFirst);
           ScaffoldMessenger.of(context).showSnackBar(
