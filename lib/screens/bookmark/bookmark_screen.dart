@@ -4,7 +4,6 @@ import 'package:worship_hymn/constants/text_styles.dart';
 import 'package:worship_hymn/widget/playlist_dialog.dart';
 import 'dart:async';
 import 'package:worship_hymn/screens/score/score_detail_screen.dart';
-import 'dart:ui' show FontFeature;
 
 
 import 'package:worship_hymn/services/playlist_service.dart';
@@ -943,7 +942,7 @@ class BookmarkScreenState extends State<BookmarkScreen> {
       // 4) 🔥 실제 남아 있는 곡 개수를 다시 세서 count에 그대로 넣기
       final afterSnap = await songsRef.get();
       await plDoc.reference.update({
-        'count': afterSnap.size,   // <= 여기서 정확히 맞춰준다
+        'songsCount': afterSnap.size,   // <= 여기서 정확히 맞춰준다
       });
     }
   }

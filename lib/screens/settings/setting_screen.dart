@@ -7,7 +7,6 @@ import 'package:worship_hymn/screens/settings/inquiry_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:worship_hymn/widget/playlist_dialog.dart';
-import 'package:worship_hymn/screens/settings/font_screen.dart';
 import 'package:worship_hymn/screens/settings/display_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:worship_hymn/screens/settings/account_screen.dart';
@@ -128,13 +127,6 @@ class SettingScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const DisplayScreen()),
-                        );
-                      }),
-                      const SizedBox(height:4),
-                      _SettingItem(title: '글자', onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const FontScreen()),
                         );
                       }),
                     ],

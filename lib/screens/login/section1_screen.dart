@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '/constants/colors.dart';
-import 'package:worship_hymn/repositories/UserRepository.dart';
-import 'package:worship_hymn/screens/main/main_screen.dart';
 import 'package:worship_hymn/auth/kakao_auth.dart';
 import 'package:worship_hymn/auth/naver_auth.dart';
 import 'package:worship_hymn/auth/google_auth.dart';

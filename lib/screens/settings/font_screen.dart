@@ -25,35 +25,46 @@ class FontScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. 프리뷰 카드
-                Card(
-                  color: AppColors.getSurface(context),
-                  surfaceTintColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "미리보기",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey,
-                            fontFamily: font.fontFamily,
+                SizedBox(
+                  width: double.infinity,
+                  child: Card(
+                    color: AppColors.getSurface(context),
+                    surfaceTintColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: EdgeInsets.zero,
+                    elevation: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "미리보기",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey,
+                              fontFamily: font.fontFamily,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          "주 하나님 지으신 모든 세계",
-                          style: AppTextStyles.headline(context),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "내 마음 속에 그리어 볼 때\n하늘의 별 울려 퍼지는 뇌성\n주님의 권능 우주에 찼네",
-                          style: AppTextStyles.body(context),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          Text(
+                            "주 하나님 지으신 모든 세계",
+                            style: AppTextStyles.headline(context).copyWith(
+                              fontSize: font.applySize(22),
+                              fontWeight: font.applyWeight(FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "주 하나님 지으신 모든 세계\n내 마음 속에 그리어 볼 때\n하늘의 별 울려 퍼지는 뇌성\n주님의 권능 우주에 찼네",
+                            style: AppTextStyles.body(context).copyWith(
+                              fontSize: font.applySize(17),
+                              fontWeight: font.applyWeight(FontWeight.w400),
+                              height: 1.8,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -65,6 +76,8 @@ class FontScreen extends StatelessWidget {
                 Card(
                   color: AppColors.getSurface(context),
                   surfaceTintColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.all(15),
                     child: Column(
@@ -101,6 +114,8 @@ class FontScreen extends StatelessWidget {
                 Card(
                   color: AppColors.getSurface(context),
                   surfaceTintColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.all(15),
                     child: Column(

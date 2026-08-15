@@ -5,6 +5,7 @@ import 'package:worship_hymn/constants/colors.dart';
 import 'package:worship_hymn/constants/text_styles.dart';
 import 'package:worship_hymn/providers/display_provider.dart';
 import 'package:worship_hymn/screens/settings/theme_settings_screen.dart';
+import 'package:worship_hymn/screens/settings/font_screen.dart';
 
 class DisplayScreen extends StatelessWidget {
   const DisplayScreen({super.key});
@@ -56,6 +57,17 @@ class DisplayScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const ThemeSettingsScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: 4),
+              _buildNavigationTile(
+                context,
+                title: '글자 설정',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FontScreen()),
                   );
                 },
               ),

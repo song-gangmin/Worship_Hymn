@@ -28,8 +28,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  // 🔸 BookmarkScreen 제어용 키
-  final GlobalKey<BookmarkScreenState> _bookmarkKey = GlobalKey<BookmarkScreenState>();
   final GlobalKey<ScoreScreenState> scoreKey = GlobalKey<ScoreScreenState>();
 
   late final List<Widget> _screens;
@@ -63,10 +61,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void goToTab(int index) => setState(() => _selectedIndex = index);
-
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-  }
 
 
   /// 바텀 navigation

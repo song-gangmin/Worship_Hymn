@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:worship_hymn/constants/colors.dart';
 import 'package:worship_hymn/constants/text_styles.dart';
 import 'package:worship_hymn/constants/title_hymns.dart'; // HymnInfo, allHymns
 import 'package:worship_hymn/screens/score/score_detail_screen.dart';
+import 'package:worship_hymn/utils/chosung_util.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<HymnInfo> hymns;
@@ -18,43 +20,44 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
-  late List<HymnInfo> _filtered;
-  String _query = '';
+
+  /// 찬송가 번호 → 가사 텍스트 캐시
+  final Map<int, String> _lyricsCache = {};
+  bool _lyricsLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _filtered = []; // ✅ 처음엔 아무 것도 안 보이게
-    _controller.addListener(_onSearchChanged);
+    _loadAllLyrics();
+  }
+
+  /// 모든 찬송가 가사 파일(assets/lyrics/page_N.txt)을 비동기로 로드
+  Future<void> _loadAllLyrics() async {
+    final futures = <Future<void>>[];
+    for (final hymn in widget.hymns) {
+      futures.add(
+        rootBundle
+            .loadString('assets/lyrics/page_${hymn.number}.txt')
+            .then((text) {
+          _lyricsCache[hymn.number] = text;
+        }).catchError((_) {
+          // 파일이 없으면 빈 문자열
+          _lyricsCache[hymn.number] = '';
+        }),
+      );
+    }
+    await Future.wait(futures);
+    if (mounted) {
+      setState(() {
+        _lyricsLoaded = true;
+      });
+    }
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_onSearchChanged);
     _controller.dispose();
     super.dispose();
-  }
-
-  void _onSearchChanged() {
-    final q = _controller.text.trim().toLowerCase();
-    final qNormalized = q.replaceAll(' ', '');
-
-    setState(() {
-      _query = q;
-      if (_query.isEmpty) {
-        // ✅ 검색어가 없으면 리스트 비우기
-        _filtered = [];
-      } else {
-        _filtered = widget.hymns.where((h) {
-          final numStr = h.number.toString();
-          final title = h.title.toLowerCase().replaceAll(' ', '');
-          final lyrics = h.lyrics.toLowerCase().replaceAll(' ', '');
-          return numStr.contains(q) ||
-              title.contains(qNormalized) ||
-              lyrics.contains(qNormalized);
-        }).toList();
-      }
-    });
   }
 
   @override
@@ -80,22 +83,25 @@ class _SearchScreenState extends State<SearchScreen> {
             child: TextField(
               controller: _controller,
               autofocus: true,
+              style: AppTextStyles.body(context).copyWith(fontSize: 16),
               decoration: InputDecoration(
-                hintText: '장, 제목 등',
+                hintText: '장, 제목, 가사 등',
                 hintStyle: AppTextStyles.caption(context),
                 filled: true,
                 fillColor: AppColors.getSurface(context),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : Colors.black,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               ),
-              style: const TextStyle(fontSize: 14),
             ),
           ),
 
@@ -103,33 +109,67 @@ class _SearchScreenState extends State<SearchScreen> {
 
           // 📄 리스트 (악보 탭 스타일)
           Expanded(
-            child: _query.isEmpty
-            // ✅ 처음엔 완전 빈 화면
-                ? const SizedBox.shrink()
-                : (_filtered.isEmpty
-            // ✅ 검색어는 있는데 결과가 없을 때만 안내 문구
-                ? const Center(
-              child: Text(
-                '검색 결과가 없습니다.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            )
-                : ListView.separated(
-              padding:
-              const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              itemCount: _filtered.length,
-              separatorBuilder: (_, __) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
-                child: Divider(
-                  height: 0.5,
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black12,
-                ),
-              ),
-              itemBuilder: (context, index) {
-                final hymn = _filtered[index];
-                return _buildResultRow(hymn);
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _controller,
+              builder: (context, value, child) {
+                final query = value.text.trim();
+
+                if (query.isEmpty) {
+                  // ✅ 처음엔 완전 빈 화면
+                  return const SizedBox.shrink();
+                }
+
+                final isChosung = isChosungOnly(query.replaceAll(' ', ''));
+                final filtered = widget.hymns.where((h) {
+                  final numStr = h.number.toString();
+
+                  // 1. 번호 매칭
+                  if (numStr.contains(query)) return true;
+
+                  // 2. 제목 매칭 (초성 포함)
+                  if (matchesQuery(h.title, query)) return true;
+
+                  // 3. 가사 매칭 — 초성이면 가사 검색 건너뛰기
+                  if (!isChosung && _lyricsLoaded) {
+                    final lyrics = _lyricsCache[h.number] ?? '';
+                    if (lyrics.isNotEmpty) {
+                      final cleaned = cleanLyrics(lyrics);
+                      if (matchesTextOnly(cleaned, query)) return true;
+                    }
+                  }
+
+                  return false;
+                }).toList();
+
+                if (filtered.isEmpty) {
+                  // ✅ 검색어는 있는데 결과가 없을 때만 안내 문구
+                  return const Center(
+                    child: Text(
+                      '검색 결과가 없습니다.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: Divider(
+                      height: 0.5,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white10
+                          : Colors.black12,
+                    ),
+                  ),
+                  itemBuilder: (context, index) {
+                    final hymn = filtered[index];
+                    return _buildResultRow(hymn);
+                  },
+                );
               },
-            )),
+            ),
           ),
         ],
       ),

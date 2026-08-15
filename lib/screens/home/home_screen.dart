@@ -8,6 +8,7 @@ import 'package:worship_hymn/screens/search/search_screen.dart';
 import 'package:worship_hymn/constants/title_hymns.dart';
 import 'package:worship_hymn/services/recent_service.dart';
 import 'package:worship_hymn/services/global_stats_service.dart';
+import 'package:worship_hymn/services/notice_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:worship_hymn/screens/home/RecentAllScreen.dart';
@@ -39,6 +40,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     recentService = RecentService(uid: uid);
     globalService = GlobalStatsService();
+
+    // 첫 프레임 렌더링 후 공지 팝업 체크
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) NoticeService.checkAndShow(context);
+    });
   }
 
   @override
@@ -85,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '장, 제목 등',
+                      '장, 제목, 가사 등',
                       style: AppTextStyles.caption(context),
                     ),
                   ],

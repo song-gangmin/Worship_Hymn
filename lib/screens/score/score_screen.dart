@@ -1,5 +1,3 @@
-import 'dart:ui' show FontFeature; // 🔹 숫자 폭 고정용
-
 import 'package:flutter/material.dart';
 import 'package:worship_hymn/constants/colors.dart';
 import 'package:worship_hymn/constants/title_hymns.dart';
@@ -35,8 +33,9 @@ class ScoreScreenState extends State<ScoreScreen> {
   late List<int> _nums;
   late bool _grouped;
 
-  // 장르 헤더 확장 상태
-  bool _genreExpanded = true;
+  // 스크롤 맨 위로 버튼
+  final ScrollController _scrollController = ScrollController();
+  bool _showScrollToTop = false;
 
   final List<Map<String, dynamic>> _sections = [
     {'start': 1, 'end': 100, 'isOpen': false},
@@ -53,6 +52,19 @@ class ScoreScreenState extends State<ScoreScreen> {
     _title = widget.title;
     _nums = widget.hymnNumbers;
     _grouped = widget.grouped;
+
+    _scrollController.addListener(() {
+      final show = _scrollController.offset > 300;
+      if (show != _showScrollToTop) {
+        setState(() => _showScrollToTop = show);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -73,6 +85,20 @@ class ScoreScreenState extends State<ScoreScreen> {
           Expanded(child: _grouped ? _buildGrouped() : _buildGenreMode()),
         ],
       ),
+      floatingActionButton: _showScrollToTop && _grouped
+          ? FloatingActionButton(
+              mini: true,
+              backgroundColor: Theme.of(context).primaryColor,
+              onPressed: () {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                );
+              },
+              child: const Icon(Icons.arrow_upward, color: Colors.white),
+            )
+          : null,
     );
   }
 
@@ -82,7 +108,6 @@ class ScoreScreenState extends State<ScoreScreen> {
       _title = title;       // 장르명
       _nums = hymns;        // 장르에 해당하는 번호들
       _grouped = false;     // 장르모드 진입
-      _genreExpanded = true;
     });
   }
 
@@ -124,7 +149,7 @@ class ScoreScreenState extends State<ScoreScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              '장, 제목 등',
+              '장, 제목, 가사 등',
               style: AppTextStyles.caption(context),
             ),
           ],
@@ -135,6 +160,7 @@ class ScoreScreenState extends State<ScoreScreen> {
 
   // 🔶 구간별(기존)
   Widget _buildGrouped() => ListView.builder(
+    controller: _scrollController,
     padding: const EdgeInsets.only(bottom: 16),
     itemCount: _sections.length,
     itemBuilder: (context, idx) {
@@ -291,7 +317,7 @@ class ScoreScreenState extends State<ScoreScreen> {
                 titlePart,
                 style: AppTextStyles.body(context).copyWith(
                   fontSize: AppTextStyles.font(context).applySize(17),
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

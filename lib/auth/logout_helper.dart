@@ -3,7 +3,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 // Kakao
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
-import 'package:kakao_flutter_sdk_auth/kakao_flutter_sdk_auth.dart';
 
 // 필요시 SharedPreferences/Hive/secure storage 등 로컬캐시도 지울 수 있어요
 import 'package:shared_preferences/shared_preferences.dart';

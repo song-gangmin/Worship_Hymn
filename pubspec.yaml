@@ -1,6 +1,6 @@
 name: worship_hymn
 description: "A new Flutter project."
-version: 1.0.0+6
+version: 2.0.0+7
 
 environment:
   sdk: ^3.5.4
@@ -9,7 +9,7 @@ dependencies:
   flutter_svg: ^2.2.1
   flutter:
     sdk: flutter
-  kakao_flutter_sdk_user: ^1.9.7
+  kakao_flutter_sdk_user: ^2.0.0+1
   http: ^1.5.0
   photo_view: ^0.15.0
   intl: ^0.20.2
@@ -25,8 +25,10 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.5+1
   shared_preferences: ^2.5.4
-  package_info_plus: ^9.0.0
-  sign_in_with_apple: ^7.0.1
+  package_info_plus: ^10.2.1
+  sign_in_with_apple: ^8.1.0
+  share_plus: ^13.3.0
+  path_provider: ^2.1.5
 
 
 
@@ -37,7 +39,7 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/icon/app_icon.png"   # 아이콘 경로
-
+ 
   flutter_test:
     sdk: Flutter
 
@@ -77,5 +79,6 @@ flutter:
     - assets/icon/setting.svg
     - assets/icon/music.svg
     - assets/scores/
+    - assets/lyrics/
 
   uses-material-design: true
